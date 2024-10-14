@@ -41,203 +41,269 @@ describe('commandRemoveSecret', () => {
   });
 
   test('should remove secret', async () => {
-    const vaultName = 'Vault2' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
+    const secretName = 'secret';
+    const secretContent = 'this is the secret';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.addSecret(vault, 'MySecret', 'this is the secret');
+      await vaultOps.addSecret(vault, secretName, secretContent);
       const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(['MySecret']);
+      expect(list.sort()).toStrictEqual([secretName]);
     });
-
-    const command = ['secrets', 'rm', '-np', dataDir, `${vaultName}:MySecret`];
-
+    const command = [
+      'secrets',
+      'rm',
+      '-np',
+      dataDir,
+      `${vaultName}:${secretName}`,
+    ];
     const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual([]);
     });
   });
-
+  test('should fail to remove vault root', async () => {
+    const vaultName = 'vault' as VaultName;
+    const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    const secretName = 'secret';
+    const secretContent = 'this is the secret';
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      await vaultOps.addSecret(vault, secretName, secretContent);
+      const list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual([secretName]);
+    });
+    const command = ['secrets', 'rm', '-np', dataDir, vaultName];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('EPERM');
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      const list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual([secretName]);
+    });
+  });
   test('should remove multiple secrets', async () => {
-    const vaultName = 'Vault2' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-    const secretNames = ['secret1', 'secret2', 'secret3'];
-
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const secretName3 = 'secret3';
+    const secretName4 = 'secret4';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      for (const secretName of secretNames) {
-        await vaultOps.addSecret(vault, secretName, secretName);
-      }
+      await vaultOps.addSecret(vault, secretName1, secretName1);
+      await vaultOps.addSecret(vault, secretName2, secretName2);
+      await vaultOps.addSecret(vault, secretName3, secretName3);
+      await vaultOps.addSecret(vault, secretName4, secretName4);
       const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(secretNames);
+      expect(list.sort()).toStrictEqual([
+        secretName1,
+        secretName2,
+        secretName3,
+        secretName4,
+      ]);
     });
-
-    const secretPaths = secretNames.map((v) => `${vaultName}:${v}`);
-    const command = ['secrets', 'rm', '-np', dataDir, ...secretPaths];
-
+    const command = [
+      'secrets',
+      'rm',
+      '-np',
+      dataDir,
+      `${vaultName}:${secretName1}`,
+      `${vaultName}:${secretName2}`,
+      `${vaultName}:${secretName3}`,
+    ];
     const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual([]);
+      expect(list.sort()).toStrictEqual([secretName4]);
     });
   });
-
   test('should make one log message for deleting multiple secrets', async () => {
-    const vaultName = 'Vault2' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-    const secretNames = ['secret1', 'secret2', 'secret3'];
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const secretName3 = 'secret3';
     let vaultLogLength: number;
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      for (const secretName of secretNames) {
-        await vaultOps.addSecret(vault, secretName, secretName);
-      }
+      await vaultOps.addSecret(vault, secretName1, secretName1);
+      await vaultOps.addSecret(vault, secretName2, secretName2);
+      await vaultOps.addSecret(vault, secretName3, secretName3);
       vaultLogLength = (await vault.log()).length;
       const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(secretNames);
+      expect(list.sort()).toStrictEqual([
+        secretName1,
+        secretName2,
+        secretName3,
+      ]);
     });
-
-    const secretPaths = secretNames.map((v) => `${vaultName}:${v}`);
-    const command = ['secrets', 'rm', '-np', dataDir, ...secretPaths];
-
+    const command = [
+      'secrets',
+      'rm',
+      '-np',
+      dataDir,
+      `${vaultName}:${secretName1}`,
+      `${vaultName}:${secretName2}`,
+      `${vaultName}:${secretName3}`,
+    ];
     const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual([]);
       expect((await vault.log()).length).toEqual(vaultLogLength + 1);
     });
   });
-
   test('should remove secrets recursively', async () => {
-    const vaultName = 'Vault2' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-    const secretDir = 'secretDir';
-    const secretNames = ['secret1', 'secret2', 'secret3'].map((v) =>
-      path.join(secretDir, v),
-    );
-
+    const secretDirName = 'dir';
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const secretName3 = 'secret3';
+    const secretPath1 = path.join(secretDirName, secretName1);
+    const secretPath2 = path.join(secretDirName, secretName2);
+    const secretPath3 = path.join(secretDirName, secretName3);
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.mkdir(vault, secretDir);
-      for (const secretName of secretNames) {
-        await vaultOps.addSecret(vault, secretName, secretName);
-      }
+      await vaultOps.mkdir(vault, secretDirName);
+      await vaultOps.addSecret(vault, secretPath1, secretPath1);
+      await vaultOps.addSecret(vault, secretPath2, secretPath2);
+      await vaultOps.addSecret(vault, secretPath3, secretPath3);
       const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(secretNames);
+      expect(list.sort()).toStrictEqual([
+        secretPath1,
+        secretPath2,
+        secretPath3,
+      ]);
     });
-
     const command = [
       'secrets',
       'rm',
       '-np',
       dataDir,
-      `${vaultName}:secretDir`,
+      `${vaultName}:${secretDirName}`,
       '--recursive',
     ];
-
     const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual([]);
     });
   });
-
   test('should fail to remove directory without recursive flag', async () => {
-    const vaultName = 'Vault2' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-    const secretDir = 'secretDir';
-    const secretNames = ['secret1', 'secret2', 'secret3'].map((v) =>
-      path.join(secretDir, v),
-    );
-
+    const secretDirName = 'dir';
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const secretName3 = 'secret3';
+    const secretPath1 = path.join(secretDirName, secretName1);
+    const secretPath2 = path.join(secretDirName, secretName2);
+    const secretPath3 = path.join(secretDirName, secretName3);
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.mkdir(vault, secretDir);
-      for (const secretName of secretNames) {
-        await vaultOps.addSecret(vault, secretName, secretName);
-      }
+      await vaultOps.mkdir(vault, secretDirName);
+      await vaultOps.addSecret(vault, secretPath1, secretPath1);
+      await vaultOps.addSecret(vault, secretPath2, secretPath2);
+      await vaultOps.addSecret(vault, secretPath3, secretPath3);
       const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(secretNames);
+      expect(list.sort()).toStrictEqual([
+        secretPath1,
+        secretPath2,
+        secretPath3,
+      ]);
     });
-
-    const command = ['secrets', 'rm', '-np', dataDir, `${vaultName}:secretDir`];
-
-    const result = await testUtils.pkStdio(command, {
-      env: { PK_PASSWORD: password },
-      cwd: dataDir,
-    });
-    expect(result.exitCode).not.toBe(0);
-
-    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(secretNames);
-    });
-  });
-
-  test('should remove files from multiple vaults in the same command', async () => {
-    const vaultName1 = 'Vault2-1' as VaultName;
-    const vaultName2 = 'Vault2-2' as VaultName;
-    const vaultId1 = await polykeyAgent.vaultManager.createVault(vaultName1);
-    const vaultId2 = await polykeyAgent.vaultManager.createVault(vaultName2);
-    const secretNames1 = ['secret1', 'secret2', 'secret3'];
-    const secretNames2 = ['secret4', 'secret5'];
-
-    await polykeyAgent.vaultManager.withVaults([vaultId1], async (vault) => {
-      for (const secretName of secretNames1) {
-        await vaultOps.addSecret(vault, secretName, secretName);
-      }
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(secretNames1);
-    });
-
-    await polykeyAgent.vaultManager.withVaults([vaultId2], async (vault) => {
-      for (const secretName of secretNames2) {
-        await vaultOps.addSecret(vault, secretName, secretName);
-      }
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(secretNames2);
-    });
-
     const command = [
       'secrets',
       'rm',
       '-np',
       dataDir,
-      ...secretNames1.map((v) => `${vaultName1}:${v}`),
-      ...secretNames2.map((v) => `${vaultName2}:${v}`),
+      `${vaultName}:${secretDirName}`,
     ];
-
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      const list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual([
+        secretPath1,
+        secretPath2,
+        secretPath3,
+      ]);
+    });
+  });
+  test('should remove files from multiple vaults in the same command', async () => {
+    const vaultName1 = 'vault-1' as VaultName;
+    const vaultName2 = 'vault-2' as VaultName;
+    const vaultId1 = await polykeyAgent.vaultManager.createVault(vaultName1);
+    const vaultId2 = await polykeyAgent.vaultManager.createVault(vaultName2);
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const secretName3 = 'secret3';
+    const secretName4 = 'secret4';
+    const secretName5 = 'secret5';
+    const secretName6 = 'secret6';
+    await polykeyAgent.vaultManager.withVaults(
+      [vaultId1, vaultId2],
+      async (vault1, vault2) => {
+        await vaultOps.addSecret(vault1, secretName1, secretName1);
+        await vaultOps.addSecret(vault1, secretName2, secretName2);
+        await vaultOps.addSecret(vault1, secretName3, secretName3);
+        await vaultOps.addSecret(vault1, secretName4, secretName4);
+        await vaultOps.addSecret(vault2, secretName5, secretName5);
+        await vaultOps.addSecret(vault2, secretName6, secretName6);
+        const list1 = await vaultOps.listSecrets(vault1);
+        expect(list1.sort()).toStrictEqual([
+          secretName1,
+          secretName2,
+          secretName3,
+          secretName4,
+        ]);
+        const list2 = await vaultOps.listSecrets(vault2);
+        expect(list2.sort()).toStrictEqual([secretName5, secretName6]);
+      },
+    );
+    const command = [
+      'secrets',
+      'rm',
+      '-np',
+      dataDir,
+      `${vaultName1}:${secretName1}`,
+      `${vaultName1}:${secretName2}`,
+      `${vaultName1}:${secretName3}`,
+      `${vaultName2}:${secretName5}`,
+    ];
     const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
-
-    await polykeyAgent.vaultManager.withVaults([vaultId1], async (vault) => {
-      const list = await vaultOps.listSecrets(vault);
-      expect(list).toStrictEqual([]);
-    });
-    await polykeyAgent.vaultManager.withVaults([vaultId2], async (vault) => {
-      const list = await vaultOps.listSecrets(vault);
-      expect(list).toStrictEqual([]);
-    });
+    await polykeyAgent.vaultManager.withVaults(
+      [vaultId1, vaultId2],
+      async (vault1, vault2) => {
+        const list1 = await vaultOps.listSecrets(vault1);
+        expect(list1).toStrictEqual([secretName4]);
+        const list2 = await vaultOps.listSecrets(vault2);
+        expect(list2).toStrictEqual([secretName6]);
+      },
+    );
   });
 });

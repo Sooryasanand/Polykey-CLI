@@ -73,7 +73,7 @@ class CommandCreate extends CommandPolykey {
             pkClient.rpcClient.methods.vaultsSecretsNew({
               metadata: auth,
               nameOrId: secretPath[0],
-              secretName: secretPath[1],
+              secretName: secretPath[1] ?? '/',
               secretContent: content.toString('binary'),
             }),
           meta,

@@ -14,12 +14,12 @@ class CommandList extends CommandPolykey {
     this.argument(
       '<directoryPath>',
       'Directory to list files from, specified as <vaultName>[:<path>]',
-      binParsers.parseSecretPathOptional,
+      binParsers.parseSecretPath,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (vaultPattern, options) => {
+    this.action(async (secretPath, options) => {
       const { default: PolykeyClient } = await import(
         'polykey/dist/PolykeyClient'
       );
@@ -52,8 +52,8 @@ class CommandList extends CommandPolykey {
           const secretPaths: Array<string> = [];
           const stream = await pkClient.rpcClient.methods.vaultsSecretsList({
             metadata: auth,
-            nameOrId: vaultPattern[0],
-            secretName: vaultPattern[1] ?? '/',
+            nameOrId: secretPath[0],
+            secretName: secretPath[1] ?? '/',
           });
           for await (const secret of stream) {
             // Remove leading slashes

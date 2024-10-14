@@ -42,31 +42,41 @@ describe('commandRenameSecret', () => {
   });
 
   test('should rename secrets', async () => {
-    const vaultName = 'Vault6' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
+    const secretName = 'secret';
+    const newSecretName = 'secret-renamed';
+    const secretContent = 'this is the secret';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.addSecret(vault, 'MySecret', 'this is the secret');
+      await vaultOps.addSecret(vault, secretName, secretContent);
     });
-
     command = [
       'secrets',
       'rename',
       '-np',
       dataDir,
-      `${vaultName}:MySecret`,
-      'MyRenamedSecret',
+      `${vaultName}:${secretName}`,
+      newSecretName,
     ];
-
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(['MyRenamedSecret']);
+      expect(list.sort()).toStrictEqual([newSecretName]);
     });
+  });
+  test('should not rename vault root', async () => {
+    const vaultName = 'vault' as VaultName;
+    await polykeyAgent.vaultManager.createVault(vaultName);
+    command = ['secrets', 'rename', '-np', dataDir, vaultName, 'rename'];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('EPERM');
   });
 });

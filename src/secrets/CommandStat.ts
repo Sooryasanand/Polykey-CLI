@@ -13,7 +13,7 @@ class CommandStat extends CommandPolykey {
     this.argument(
       '<secretPath>',
       'Path to where the secret, specified as <vaultName>:<directoryPath>',
-      binParsers.parseSecretPathValue,
+      binParsers.parseSecretPath,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
@@ -55,7 +55,7 @@ class CommandStat extends CommandPolykey {
             pkClient.rpcClient.methods.vaultsSecretsStat({
               metadata: auth,
               nameOrId: secretPath[0],
-              secretName: secretPath[1],
+              secretName: secretPath[1] ?? '/',
             }),
           meta,
         );

@@ -157,6 +157,21 @@ class ErrorPolykeyCLIMakeDirectory<T> extends ErrorPolykeyCLI<T> {
   exitCode = 1;
 }
 
+class ErrorPolykeyCLIRenameSecret<T> extends ErrorPolykeyCLI<T> {
+  static description = 'Failed to rename one or more secrets';
+  exitCode = 1;
+}
+
+class ErrorPolykeyCLIRemoveSecret<T> extends ErrorPolykeyCLI<T> {
+  static description = 'Failed to remove one or more secrets';
+  exitCode = 1;
+}
+
+class ErrorPolykeyCLICatSecret<T> extends ErrorPolykeyCLI<T> {
+  static description = 'Failed to concatenate one or more secrets';
+  exitCode = 1;
+}
+
 export {
   ErrorPolykeyCLI,
   ErrorPolykeyCLIUncaughtException,
@@ -178,4 +193,7 @@ export {
   ErrorPolykeyCLIInvalidEnvName,
   ErrorPolykeyCLIDuplicateEnvName,
   ErrorPolykeyCLIMakeDirectory,
+  ErrorPolykeyCLIRenameSecret,
+  ErrorPolykeyCLIRemoveSecret,
+  ErrorPolykeyCLICatSecret,
 };
