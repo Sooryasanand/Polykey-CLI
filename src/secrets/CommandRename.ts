@@ -4,6 +4,7 @@ import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binParsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
+import * as errors from '../errors';
 
 class CommandRename extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -13,13 +14,19 @@ class CommandRename extends CommandPolykey {
     this.argument(
       '<secretPath>',
       'Path to where the secret to be renamed, specified as <vaultName>:<directoryPath>',
-      binParsers.parseSecretPathValue,
+      binParsers.parseSecretPath,
     );
     this.argument('<newSecretName>', 'New name of the secret');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, newSecretName, options) => {
+      // Ensure that a valid secret path is provided
+      if (secretPath[1] == null) {
+        throw new errors.ErrorPolykeyCLIRenameSecret(
+          'EPERM: Cannot rename vault root',
+        );
+      }
       const { default: PolykeyClient } = await import(
         'polykey/dist/PolykeyClient'
       );

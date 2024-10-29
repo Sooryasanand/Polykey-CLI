@@ -4,6 +4,7 @@ import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binParsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
+import * as errors from '../errors';
 
 class CommandRemove extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -20,9 +21,17 @@ class CommandRemove extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.addOption(binOptions.recursive);
     this.action(async (secretPaths, options) => {
-      secretPaths = secretPaths.map((path: string) =>
-        binParsers.parseSecretPathValue(path),
-      );
+      for (let i = 0; i < secretPaths.length; i++) {
+        const value: string = secretPaths[i];
+        const parsedValue = binParsers.parseSecretPath(value);
+        // The vault root cannot be deleted
+        if (parsedValue[1] == null) {
+          throw new errors.ErrorPolykeyCLIRemoveSecret(
+            'EPERM: Cannot remove vault root',
+          );
+        }
+        secretPaths[i] = parsedValue;
+      }
       const { default: PolykeyClient } = await import(
         'polykey/dist/PolykeyClient'
       );
@@ -50,28 +59,25 @@ class CommandRemove extends CommandPolykey {
           options: { nodePath: options.nodePath },
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const response = await binUtils.retryAuthentication(async (auth) => {
+        await binUtils.retryAuthentication(async (auth) => {
           const response =
             await pkClient.rpcClient.methods.vaultsSecretsRemove();
-          await (async () => {
-            const writer = response.writable.getWriter();
-            let first = true;
-            for (const [vault, path] of secretPaths) {
-              await writer.write({
-                nameOrId: vault,
-                secretName: path,
-                metadata: first
-                  ? { ...auth, options: { recursive: options.recursive } }
-                  : undefined,
-              });
-              first = false;
-            }
-            await writer.close();
-          })();
-          return response;
+          const writer = response.writable.getWriter();
+          let first = true;
+          for (const [vault, path] of secretPaths) {
+            await writer.write({
+              nameOrId: vault,
+              secretName: path,
+              metadata: first
+                ? { ...auth, options: { recursive: options.recursive } }
+                : undefined,
+            });
+            first = false;
+          }
+          await writer.close();
+          // Wait for the program to generate a response (complete processing).
+          await response.output;
         }, meta);
-        // Wait for the program to generate a response (complete processing).
-        await response.output;
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

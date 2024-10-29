@@ -8,8 +8,9 @@ import * as binProcessors from '../utils/processors';
 class CommandList extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
-    this.name('list');
-    this.description('List all Available Vaults');
+    this.name('ls');
+    this.alias('list');
+    this.description('List all available Vaults');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);

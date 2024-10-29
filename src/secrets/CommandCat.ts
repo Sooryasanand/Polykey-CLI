@@ -4,6 +4,7 @@ import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binParsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
+import * as errors from '../errors';
 
 class CommandGet extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -21,7 +22,7 @@ class CommandGet extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPaths, options) => {
       secretPaths = secretPaths.map((path: string) =>
-        binParsers.parseSecretPathValue(path),
+        binParsers.parseSecretPath(path),
       );
       const { default: PolykeyClient } = await import(
         'polykey/dist/PolykeyClient'
@@ -77,28 +78,39 @@ class CommandGet extends CommandPolykey {
           });
           return;
         }
-        await binUtils.retryAuthentication(async (auth) => {
+        const hasErrored = await binUtils.retryAuthentication(async (auth) => {
+          // Write secret paths to input stream
           const response = await pkClient.rpcClient.methods.vaultsSecretsGet();
-          await (async () => {
-            const writer = response.writable.getWriter();
-            let first = true;
-            for (const [vaultName, secretPath] of secretPaths) {
-              await writer.write({
-                nameOrId: vaultName,
-                secretName: secretPath,
-                metadata: first
-                  ? { ...auth, options: { continueOnError: true } }
-                  : undefined,
-              });
-              first = false;
-            }
-            await writer.close();
-          })();
-          for await (const chunk of response.readable) {
-            if (chunk.error) process.stderr.write(chunk.error);
-            else process.stdout.write(chunk.secretContent);
+          const writer = response.writable.getWriter();
+          let first = true;
+          for (const [vaultName, secretPath] of secretPaths) {
+            await writer.write({
+              nameOrId: vaultName,
+              secretName: secretPath ?? '/',
+              metadata: first
+                ? { ...auth, options: { continueOnError: true } }
+                : undefined,
+            });
+            first = false;
           }
+          await writer.close();
+          // Print out incoming data to standard out
+          let hasErrored = false;
+          for await (const chunk of response.readable) {
+            if (chunk.error) {
+              hasErrored = true;
+              process.stderr.write(chunk.error);
+            } else {
+              process.stdout.write(chunk.secretContent);
+            }
+          }
+          return hasErrored;
         }, meta);
+        if (hasErrored) {
+          throw new errors.ErrorPolykeyCLICatSecret(
+            'Failed to concatenate one or more secrets',
+          );
+        }
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

@@ -24,7 +24,7 @@ class CommandMkdir extends CommandPolykey {
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.addOption(binOptions.recursive);
+    this.addOption(binOptions.parents);
     this.action(async (secretPaths, options) => {
       secretPaths = secretPaths.map((path: string) =>
         binParsers.parseSecretPath(path),
@@ -59,7 +59,8 @@ class CommandMkdir extends CommandPolykey {
           },
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const response = await binUtils.retryAuthentication(async (auth) => {
+        const hasErrored = await binUtils.retryAuthentication(async (auth) => {
+          // Write directory paths to input stream
           const response =
             await pkClient.rpcClient.methods.vaultsSecretsMkdir();
           const writer = response.writable.getWriter();
@@ -67,43 +68,44 @@ class CommandMkdir extends CommandPolykey {
           for (const [vault, path] of secretPaths) {
             await writer.write({
               nameOrId: vault,
-              dirName: path,
+              dirName: path ?? '/',
               metadata: first
-                ? { ...auth, options: { recursive: options.recursive } }
+                ? { ...auth, options: { recursive: options.parents } }
                 : undefined,
             });
             first = false;
           }
           await writer.close();
-          return response;
-        }, meta);
-
-        let hasErrored = false;
-        for await (const result of response.readable) {
-          if (result.type === 'error') {
-            // TS cannot properly evaluate a type this deeply nested, so we use
-            // the as keyword to help it. Inside this block, the type of data is
-            // ensured to be 'error'.
-            const error = result as ErrorMessage;
-            hasErrored = true;
-            let message: string = '';
-            switch (error.code) {
-              case 'ENOENT':
-                message = 'No such secret or directory';
-                break;
-              case 'EEXIST':
-                message = 'Secret or directory exists';
-                break;
-              default:
-                throw new ErrorPolykeyCLIUncaughtException(
-                  `Unexpected error code: ${error.code}`,
-                );
+          // Print out incoming data to standard out, or incoming errors to
+          // standard error.
+          let hasErrored = false;
+          for await (const result of response.readable) {
+            if (result.type === 'error') {
+              // TS cannot properly evaluate a type this deeply nested, so we use
+              // the as keyword to help it. Inside this block, the type of data
+              // is ensured to be 'error'.
+              const error = result as ErrorMessage;
+              hasErrored = true;
+              let message: string = '';
+              switch (error.code) {
+                case 'ENOENT':
+                  message = 'No such secret or directory';
+                  break;
+                case 'EEXIST':
+                  message = 'Secret or directory exists';
+                  break;
+                default:
+                  throw new ErrorPolykeyCLIUncaughtException(
+                    `Unexpected error code: ${error.code}`,
+                  );
+              }
+              process.stderr.write(
+                `${error.code}: cannot create directory ${error.reason}: ${message}\n`,
+              );
             }
-            process.stderr.write(
-              `${error.code}: cannot create directory ${error.reason}: ${message}\n`,
-            );
           }
-        }
+          return hasErrored;
+        }, meta);
         if (hasErrored) {
           throw new ErrorPolykeyCLIMakeDirectory(
             'Failed to create one or more directories',

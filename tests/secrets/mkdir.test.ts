@@ -46,7 +46,7 @@ describe('commandMkdir', () => {
     const dirName = 'dir';
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
     command = ['secrets', 'mkdir', '-np', dataDir, `${vaultName}:${dirName}`];
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
@@ -54,6 +54,20 @@ describe('commandMkdir', () => {
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const stat = await vaultOps.statSecret(vault, dirName);
       expect(stat.isDirectory()).toBeTruthy();
+    });
+  });
+  test('should fail when provided only the vault name', async () => {
+    const vaultName = 'vault' as VaultName;
+    const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    command = ['secrets', 'mkdir', '-np', dataDir, vaultName];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('EEXIST'); // Root directory is already a directory
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      expect(await vaultOps.listSecrets(vault)).toEqual([]);
     });
   });
   test('should make directories recursively', async () => {
@@ -68,9 +82,9 @@ describe('commandMkdir', () => {
       '-np',
       dataDir,
       `${vaultName}:${dirNameNested}`,
-      '--recursive',
+      '--parents',
     ];
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
@@ -95,7 +109,7 @@ describe('commandMkdir', () => {
       dataDir,
       `${vaultName}:${dirNameNested}`,
     ];
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
@@ -120,7 +134,7 @@ describe('commandMkdir', () => {
       });
     });
     command = ['secrets', 'mkdir', '-np', dataDir, `${vaultName}:${dirName}`];
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
@@ -150,7 +164,7 @@ describe('commandMkdir', () => {
       dataDir,
       `${vaultName}:${secretName}`,
     ];
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
@@ -182,7 +196,7 @@ describe('commandMkdir', () => {
       `${vaultName2}:${dirName2}`,
       `${vaultName1}:${dirName3}`,
     ];
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
@@ -218,7 +232,7 @@ describe('commandMkdir', () => {
       `${vaultName2}:${dirName3}`,
       `${vaultName1}:${dirName4}`,
     ];
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });

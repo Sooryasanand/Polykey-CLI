@@ -40,35 +40,58 @@ describe('commandStat', () => {
     });
   });
 
-  test('should retrieve secrets', async () => {
-    const vaultName = 'Vault9';
+  test('should stat secrets', async () => {
+    const vaultName = 'vault';
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
+    const secretName = 'secret';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.addSecret(vault, 'MySecret', 'this is the secret');
+      await vaultOps.addSecret(vault, secretName, secretName);
     });
-
     command = [
       'secrets',
       'stat',
       '-np',
       dataDir,
-      `${vaultName}:MySecret`,
+      `${vaultName}:${secretName}`,
       '--format',
       'json',
     ];
-
-    const result = await testUtils.pkStdio([...command], {
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
       stat: {
-        nlink: 1,
-        blocks: 1,
-        blksize: 4096,
-        size: 18,
+        nlink: 1, // Reference to itself
+        blocks: 1, // Each block can store 512 bytes
+        blksize: 4096, // Default unix block size
+        size: secretName.length, // Each character is a byte
+      },
+    });
+  });
+  test('should stat vault root', async () => {
+    const vaultName = 'vault';
+    await polykeyAgent.vaultManager.createVault(vaultName);
+    command = [
+      'secrets',
+      'stat',
+      '-np',
+      dataDir,
+      vaultName,
+      '--format',
+      'json',
+    ];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      stat: {
+        nlink: 2, // . and .. (itself and parent)
+        size: 0, // Directories have no size
+        blocks: 0, // Too small to occupy a block
       },
     });
   });

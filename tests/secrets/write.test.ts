@@ -68,7 +68,6 @@ describe('commandWriteFile', () => {
         dataDir,
         `${vaultName}:${secretName}`,
       ];
-
       const childProcess = await testUtils.pkSpawn(
         command,
         {
@@ -95,6 +94,34 @@ describe('commandWriteFile', () => {
       });
     },
   );
+  test.prop([stdinArb], { numRuns: 1 })(
+    'should fail writing when secret path is not specified',
+    async (stdinData) => {
+      const vaultName = genVaultName();
+      await polykeyAgent.vaultManager.createVault(vaultName);
+      command = ['secrets', 'write', '-np', dataDir, vaultName];
+      const childProcess = await testUtils.pkSpawn(
+        command,
+        {
+          env: { PK_PASSWORD: password },
+          cwd: dataDir,
+        },
+        logger,
+      );
+      // The conditions of stdin being null will not be met in the test, so we
+      // don't have to worry about the fields being null.
+      childProcess.stdin!.write(stdinData);
+      childProcess.stdin!.end();
+      const exitCode = await new Promise((resolve) => {
+        childProcess.once('exit', (code) => {
+          const exitCode = code ?? -255;
+          childProcess.removeAllListeners('data');
+          resolve(exitCode);
+        });
+      });
+      expect(exitCode).not.toBe(0);
+    },
+  );
   test('should overwrite secret', async () => {
     const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
@@ -107,7 +134,6 @@ describe('commandWriteFile', () => {
       dataDir,
       `${vaultName}:${secretName}`,
     ];
-
     const childProcess = await testUtils.pkSpawn(
       command,
       {

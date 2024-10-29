@@ -42,43 +42,38 @@ describe('commandNewDirSecret', () => {
   });
 
   test('should add a directory of secrets', async () => {
-    const vaultName = 'Vault8' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
-    const secretDir = path.join(dataDir, 'secrets');
-    await fs.promises.mkdir(secretDir);
-    await fs.promises.writeFile(
-      path.join(secretDir, 'secret-1'),
-      'this is the secret 1',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'secret-2'),
-      'this is the secret 2',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'secret-3'),
-      'this is the secret 3',
-    );
-
+    const secretDirName = 'secrets';
+    const secretDirPathName = path.join(dataDir, secretDirName);
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const secretName3 = 'secret3';
+    const secretPath1 = path.join(secretDirPathName, secretName1);
+    const secretPath2 = path.join(secretDirPathName, secretName2);
+    const secretPath3 = path.join(secretDirPathName, secretName3);
+    await fs.promises.mkdir(secretDirPathName);
+    await fs.promises.writeFile(secretPath1, secretPath1);
+    await fs.promises.writeFile(secretPath2, secretPath2);
+    await fs.promises.writeFile(secretPath3, secretPath3);
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual([]);
     });
-
-    command = ['secrets', 'dir', '-np', dataDir, secretDir, vaultName];
-
-    const result2 = await testUtils.pkStdio([...command], {
+    command = ['secrets', 'dir', '-np', dataDir, secretDirPathName, vaultName];
+    const result = await testUtils.pkStdio(command, {
       env: { PK_PASSWORD: password },
       cwd: dataDir,
     });
-    expect(result2.exitCode).toBe(0);
-
+    expect(result.exitCode).toBe(0);
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
+      // The secretPath includes the full local path. We need relative vault
+      // path, which only needs the actual directory name and the secret name.
       expect(list.sort()).toStrictEqual([
-        'secrets/secret-1',
-        'secrets/secret-2',
-        'secrets/secret-3',
+        path.join(secretDirName, secretName1),
+        path.join(secretDirName, secretName2),
+        path.join(secretDirName, secretName3),
       ]);
     });
   });

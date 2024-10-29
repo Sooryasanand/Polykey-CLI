@@ -17,7 +17,6 @@ describe('commandEnv', () => {
   const vaultName = 'vault' as VaultName;
   let dataDir: string;
   let polykeyAgent: PolykeyAgent;
-  let command: Array<string>;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -48,12 +47,10 @@ describe('commandEnv', () => {
 
   test('can select 1 env variable', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET', 'this is the secret1');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -66,8 +63,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -76,13 +72,11 @@ describe('commandEnv', () => {
   });
   test('can select multiple env variables', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET1', 'this is the secret1');
       await vaultOps.addSecret(vault, 'SECRET2', 'this is the secret2');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -96,8 +90,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -107,15 +100,13 @@ describe('commandEnv', () => {
   });
   test('can select a directory of env variables', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET1', 'this is the secret1');
       await vaultOps.mkdir(vault, 'dir1');
       await vaultOps.addSecret(vault, 'dir1/SECRET2', 'this is the secret2');
       await vaultOps.addSecret(vault, 'dir1/SECRET3', 'this is the secret3');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -128,8 +119,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -140,12 +130,10 @@ describe('commandEnv', () => {
   });
   test('can select and rename an env variable', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET', 'this is the secret');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -158,8 +146,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -169,14 +156,12 @@ describe('commandEnv', () => {
   });
   test('can not rename a directory of env variables', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.mkdir(vault, 'dir');
       await vaultOps.addSecret(vault, 'dir1/SECRET1', 'this is the secret1');
       await vaultOps.addSecret(vault, 'dir1/SECRET2', 'this is the secret2');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -189,8 +174,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -201,7 +185,6 @@ describe('commandEnv', () => {
   });
   test('can mix and match env variables', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET1', 'this is the secret1');
       await vaultOps.addSecret(vault, 'SECRET2', 'this is the secret2');
@@ -209,8 +192,7 @@ describe('commandEnv', () => {
       await vaultOps.addSecret(vault, 'dir1/SECRET3', 'this is the secret3');
       await vaultOps.addSecret(vault, 'dir1/SECRET4', 'this is the secret4');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -225,8 +207,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -238,12 +219,10 @@ describe('commandEnv', () => {
   });
   test('existing env are passed through', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET1', 'this is the secret1');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -256,8 +235,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: {
         PK_PASSWORD: password,
         EXISTING: 'existing var',
@@ -270,7 +248,6 @@ describe('commandEnv', () => {
   });
   test('handles duplicate secret names', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET1', 'this is the secret1');
       await vaultOps.addSecret(vault, 'SECRET2', 'this is the secret2');
@@ -278,8 +255,7 @@ describe('commandEnv', () => {
       await vaultOps.mkdir(vault, 'dir1');
       await vaultOps.addSecret(vault, 'dir1/SECRET4', 'this is the secret4');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -295,8 +271,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -309,7 +284,6 @@ describe('commandEnv', () => {
   });
   test('should output human format', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET1', 'this is the secret1');
       await vaultOps.addSecret(vault, 'SECRET2', 'this is the secret2');
@@ -317,8 +291,7 @@ describe('commandEnv', () => {
       await vaultOps.addSecret(vault, 'dir1/SECRET3', 'this is the secret3');
       await vaultOps.addSecret(vault, 'dir1/SECRET4', 'this is the secret4');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -327,8 +300,7 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}`,
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -344,7 +316,6 @@ describe('commandEnv', () => {
     const vaultId2 = await polykeyAgent.vaultManager.createVault(
       `${vaultName}2`,
     );
-
     await polykeyAgent.vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {
@@ -356,8 +327,7 @@ describe('commandEnv', () => {
         await vaultOps.addSecret(vault2, 'dir1/SECRET4', 'this is the secret4');
       },
     );
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -367,8 +337,7 @@ describe('commandEnv', () => {
       `${vaultName}1`,
       `${vaultName}2`,
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -384,7 +353,6 @@ describe('commandEnv', () => {
     const vaultId2 = await polykeyAgent.vaultManager.createVault(
       `${vaultName}2`,
     );
-
     await polykeyAgent.vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {
@@ -396,8 +364,7 @@ describe('commandEnv', () => {
         await vaultOps.addSecret(vault2, 'dir1/SECRET4', 'this is the secret4');
       },
     );
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -407,8 +374,7 @@ describe('commandEnv', () => {
       `${vaultName}1`,
       `${vaultName}2`,
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -424,7 +390,6 @@ describe('commandEnv', () => {
     const vaultId2 = await polykeyAgent.vaultManager.createVault(
       `${vaultName}2`,
     );
-
     await polykeyAgent.vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {
@@ -436,8 +401,7 @@ describe('commandEnv', () => {
         await vaultOps.addSecret(vault2, 'dir1/SECRET4', 'this is the secret4');
       },
     );
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -447,8 +411,7 @@ describe('commandEnv', () => {
       `${vaultName}1`,
       `${vaultName}2`,
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -459,7 +422,6 @@ describe('commandEnv', () => {
   });
   test('should output json format', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET1', 'this is the secret1');
       await vaultOps.addSecret(vault, 'SECRET2', 'this is the secret2');
@@ -467,8 +429,7 @@ describe('commandEnv', () => {
       await vaultOps.addSecret(vault, 'dir1/SECRET3', 'this is the secret3');
       await vaultOps.addSecret(vault, 'dir1/SECRET4', 'this is the secret4');
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -477,8 +438,7 @@ describe('commandEnv', () => {
       'json',
       `${vaultName}`,
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -491,11 +451,9 @@ describe('commandEnv', () => {
   });
   test('testing valid and invalid rename inputs', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'SECRET', 'this is the secret');
     });
-
     const valid = [
       'one',
       'ONE',
@@ -506,88 +464,79 @@ describe('commandEnv', () => {
       'ONE123',
       'ONE_123',
     ];
-
     const invalid = ['123', '123abc', '123_123', '123_abc', '123 abc', ' '];
-
+    const validCommand = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      ...valid.map((v) => `${vaultName}:SECRET=${v}`),
+    ];
     // Checking valid
-    const result = await testUtils.pkExec(
-      [
+    const result = await testUtils.pkExec(validCommand, {
+      env: { PK_PASSWORD: password },
+    });
+    expect(result.exitCode).toBe(0);
+    // Checking invalid
+    for (const nameNew of invalid) {
+      const invalidCommand = [
         'secrets',
         'env',
         '-np',
         dataDir,
         '--env-format',
         'unix',
-        ...valid.map((v) => `${vaultName}:SECRET=${v}`),
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
-    expect(result.exitCode).toBe(0);
-
-    // Checking invalid
-    for (const nameNew of invalid) {
-      const result = await testUtils.pkExec(
-        [
-          'secrets',
-          'env',
-          '-np',
-          dataDir,
-          '--env-format',
-          'unix',
-          '-e',
-          `${vaultName}:SECRET=${nameNew}`,
-        ],
-        { env: { PK_PASSWORD: password } },
-      );
+        '-e',
+        `${vaultName}:SECRET=${nameNew}`,
+      ];
+      const result = await testUtils.pkExec(invalidCommand, {
+        env: { PK_PASSWORD: password },
+      });
       expect(result.exitCode).toBe(sysexits.USAGE);
     }
   });
   test('invalid handled with error', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, '123', 'this is an invalid secret');
     });
-
-    // Checking valid
-    const result = await testUtils.pkExec(
-      [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--env-format',
-        'unix',
-        '-ei',
-        'error',
-        `${vaultName}`,
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      '-ei',
+      'error',
+      `${vaultName}`,
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
     expect(result.exitCode).toBe(64);
   });
   test('invalid handled with warn', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, '123', 'this is an invalid secret');
     });
-
-    // Checking valid
-    const result = await testUtils.pkExec(
-      [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--env-format',
-        'unix',
-        '-ei',
-        'warn',
-        `${vaultName}`,
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      '-ei',
+      'warn',
+      `${vaultName}`,
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
     expect(result.stderr).toInclude(
@@ -596,26 +545,24 @@ describe('commandEnv', () => {
   });
   test('invalid handled with ignore', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, '123', 'this is an invalid secret');
     });
 
-    // Checking valid
-    const result = await testUtils.pkExec(
-      [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--env-format',
-        'unix',
-        '-ei',
-        'ignore',
-        `${vaultName}`,
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      '-ei',
+      'ignore',
+      `${vaultName}`,
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
     expect(result.stderr).not.toInclude(
@@ -624,55 +571,49 @@ describe('commandEnv', () => {
   });
   test('duplicate handled with error', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'secret', 'this is a secret');
       await vaultOps.mkdir(vault, 'dir');
       await vaultOps.addSecret(vault, 'dir/secret', 'this is a secret');
     });
-
-    // Checking valid
-    const result = await testUtils.pkExec(
-      [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--env-format',
-        'unix',
-        '-ed',
-        'error',
-        `${vaultName}`,
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      '-ed',
+      'error',
+      `${vaultName}`,
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
     expect(result.exitCode).toBe(64);
     expect(result.stderr).toInclude('ErrorPolykeyCLIDuplicateEnvName');
   });
   test('duplicate handled with warn', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'secret', 'this is a secret');
       await vaultOps.mkdir(vault, 'dir');
       await vaultOps.addSecret(vault, 'dir/secret', 'this is a secret');
     });
-
-    // Checking valid
-    const result = await testUtils.pkExec(
-      [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--env-format',
-        'unix',
-        '-ed',
-        'warn',
-        `${vaultName}`,
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      '-ed',
+      'warn',
+      `${vaultName}`,
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toInclude(
       'The env variable (secret) is duplicate, overwriting',
@@ -680,61 +621,54 @@ describe('commandEnv', () => {
   });
   test('duplicate handled with keep', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'secret', 'this is a secret1');
       await vaultOps.mkdir(vault, 'dir');
       await vaultOps.addSecret(vault, 'dir/secret', 'this is a secret2');
     });
-
-    // Checking valid
-    const result = await testUtils.pkExec(
-      [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--env-format',
-        'unix',
-        '-ed',
-        'keep',
-        `${vaultName}`,
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      '-ed',
+      'keep',
+      `${vaultName}`,
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toInclude('this is a secret1');
   });
   test('duplicate handled with overwrite', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, 'secret', 'this is a secret1');
       await vaultOps.mkdir(vault, 'dir');
       await vaultOps.addSecret(vault, 'dir/secret', 'this is a secret2');
     });
-
-    // Checking valid
-    const result = await testUtils.pkExec(
-      [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--env-format',
-        'unix',
-        '-ed',
-        'overwrite',
-        `${vaultName}`,
-      ],
-      { env: { PK_PASSWORD: password } },
-    );
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      '-ed',
+      'overwrite',
+      `${vaultName}`,
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toInclude('this is a secret2');
   });
   test('newlines in secrets are untouched', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(
         vault,
@@ -742,8 +676,7 @@ describe('commandEnv', () => {
         'this is a secret\nit has multiple lines\n',
       );
     });
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -756,8 +689,7 @@ describe('commandEnv', () => {
       '-e',
       'console.log(JSON.stringify(process.env))',
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
@@ -792,15 +724,14 @@ describe('commandEnv', () => {
     },
   );
   test('handles no arguments', async () => {
-    command = ['secrets', 'env', '-np', dataDir, '--env-format', 'unix'];
-
-    const result1 = await testUtils.pkExec([...command], {
+    const command = ['secrets', 'env', '-np', dataDir, '--env-format', 'unix'];
+    const result1 = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result1.exitCode).toBe(64);
   });
   test('handles providing no secret paths', async () => {
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -810,8 +741,7 @@ describe('commandEnv', () => {
       '--',
       'someCommand',
     ];
-
-    const result1 = await testUtils.pkExec([...command], {
+    const result1 = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result1.exitCode).toBe(64);
@@ -823,7 +753,6 @@ describe('commandEnv', () => {
     const vaultId2 = await polykeyAgent.vaultManager.createVault(
       `${vaultName}2`,
     );
-
     await polykeyAgent.vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {
@@ -835,8 +764,7 @@ describe('commandEnv', () => {
         await vaultOps.addSecret(vault2, 'dir1/SECRET4', 'this is the secret4');
       },
     );
-
-    command = [
+    const command = [
       'secrets',
       'env',
       '-np',
@@ -846,8 +774,7 @@ describe('commandEnv', () => {
       `${vaultName}1`,
       `${vaultName}2`,
     ];
-
-    const result = await testUtils.pkExec([...command], {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
     expect(result.exitCode).toBe(0);
