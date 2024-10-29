@@ -75,10 +75,14 @@ async function polykeyAgentMain(): Promise<number> {
       process.exitCode = e.exitCode;
     } else {
       // Unknown error, this should not happen
+      const wrappedError = new binErrors.ErrorPolykeyCLIUnexpectedError(
+        binUtils.composeErrorMessage(e),
+        { cause: e },
+      );
       process.stderr.write(
         binUtils.outputFormatter({
           type: errFormat,
-          data: e,
+          data: wrappedError,
         }),
       );
       process.exitCode = 255;
@@ -217,10 +221,14 @@ async function polykeyMain(argv: Array<string>): Promise<number> {
       process.exitCode = e.exitCode;
     } else {
       // Unknown error, this should not happen
+      const wrappedError = new binErrors.ErrorPolykeyCLIUnexpectedError(
+        binUtils.composeErrorMessage(e),
+        { cause: e },
+      );
       process.stderr.write(
         binUtils.outputFormatter({
           type: errFormat,
-          data: e,
+          data: wrappedError,
         }),
       );
       process.exitCode = 255;

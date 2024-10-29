@@ -39,6 +39,24 @@ describe('commandCatSecret', () => {
       recursive: true,
     });
   });
+
+  test('should fail with invalid vault name', async () => {
+    const vaultName = 'vault' as VaultName;
+    const secretName = 'secret-name';
+    const command = [
+      'secrets',
+      'cat',
+      '-np',
+      dataDir,
+      `${vaultName}:${secretName}`,
+    ];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('ErrorVaultsVaultUndefined');
+  });
   test('should retrieve a secret', async () => {
     const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
@@ -61,13 +79,12 @@ describe('commandCatSecret', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe(secretContent);
   });
-  test('should fail when reading root without secret path', async () => {
+  test('should fail without secret path', async () => {
     const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-    const secretName = 'secret-name';
-    const secretContent = 'this is the contents of the secret';
+    const secretName = 'secret';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.addSecret(vault, secretName, secretContent);
+      await vaultOps.addSecret(vault, secretName, secretName);
     });
     const command = ['secrets', 'cat', '-np', dataDir, vaultName];
     const result = await testUtils.pkStdio(command, {
@@ -75,13 +92,13 @@ describe('commandCatSecret', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toInclude('ErrorSecretsIsDirectory');
+    expect(result.stderr).toInclude('Is a directory');
   });
   test('should concatenate multiple secrets', async () => {
-    const vaultName = 'Vault3' as VaultName;
+    const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-    const secretName1 = 'secret-name1';
-    const secretName2 = 'secret-name2';
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, secretName1, secretName1);
       await vaultOps.addSecret(vault, secretName2, secretName2);
@@ -102,13 +119,13 @@ describe('commandCatSecret', () => {
     expect(result.stdout).toBe(`${secretName1}${secretName2}`);
   });
   test('should concatenate secrets from multiple vaults', async () => {
-    const vaultName1 = 'Vault3-1';
-    const vaultName2 = 'Vault3-2';
+    const vaultName1 = 'vault-1';
+    const vaultName2 = 'vault-2';
     const vaultId1 = await polykeyAgent.vaultManager.createVault(vaultName1);
     const vaultId2 = await polykeyAgent.vaultManager.createVault(vaultName2);
-    const secretName1 = 'secret-name1';
-    const secretName2 = 'secret-name2';
-    const secretName3 = 'secret-name3';
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const secretName3 = 'secret3';
     await polykeyAgent.vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {
@@ -134,10 +151,11 @@ describe('commandCatSecret', () => {
     expect(result.stdout).toBe(`${secretName1}${secretName2}${secretName3}`);
   });
   test('should ignore missing files when concatenating multiple files', async () => {
-    const vaultName = 'Vault3';
+    const vaultName = 'vault';
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-    const secretName1 = 'secret-name1';
-    const secretName2 = 'secret-name2';
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const invalidName = 'nosecret';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vaultOps.addSecret(vault, secretName1, secretName1);
       await vaultOps.addSecret(vault, secretName2, secretName2);
@@ -148,7 +166,7 @@ describe('commandCatSecret', () => {
       '-np',
       dataDir,
       `${vaultName}:${secretName1}`,
-      `${vaultName}:doesnt-exist`,
+      `${vaultName}:${invalidName}`,
       `${vaultName}:${secretName2}`,
     ];
     const result = await testUtils.pkStdio(command, {
@@ -157,7 +175,7 @@ describe('commandCatSecret', () => {
     });
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toBe(`${secretName1}${secretName2}`);
-    expect(result.stderr).not.toBe('');
+    expect(result.stderr).toInclude('No such file or directory');
   });
   test('should return stdin if no arguments are passed', async () => {
     const command = ['secrets', 'cat', '-np', dataDir];

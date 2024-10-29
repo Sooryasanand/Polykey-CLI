@@ -24,7 +24,7 @@ class CommandEdit extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, options) => {
       const os = await import('os');
-      const { execSync } = await import('child_process');
+      const { spawn } = await import('child_process');
       const vaultsErrors = await import('polykey/dist/vaults/errors');
       const { default: PolykeyClient } = await import(
         'polykey/dist/PolykeyClient'
@@ -64,17 +64,14 @@ class CommandEdit extends CommandPolykey {
         const secretExists = await binUtils.retryAuthentication(
           async (auth) => {
             let exists = true;
-            const res = await pkClient.rpcClient.methods.vaultsSecretsGet();
-            const writer = res.writable.getWriter();
-            await writer.write({
+            const response = await pkClient.rpcClient.methods.vaultsSecretsGet({
               nameOrId: secretPath[0],
               secretName: secretPath[1] ?? '/',
               metadata: auth,
             });
-            await writer.close();
             try {
               let rawSecretContent: string = '';
-              for await (const chunk of res.readable) {
+              for await (const chunk of response) {
                 rawSecretContent += chunk.secretContent;
               }
               const secretContent = Buffer.from(rawSecretContent, 'binary');
@@ -83,6 +80,20 @@ class CommandEdit extends CommandPolykey {
               const [cause, _] = binUtils.remoteErrorCause(e);
               if (cause instanceof vaultsErrors.ErrorSecretsSecretUndefined) {
                 exists = false;
+              } else if (
+                cause instanceof vaultsErrors.ErrorSecretsIsDirectory
+              ) {
+                // First, write the inline error to standard error like other
+                // secrets commands do.
+                process.stderr.write(
+                  `edit: ${secretPath[1] ?? '/'}: No such file or directory\n`,
+                );
+                // Then, throw an error to get the non-zero exit code. As this
+                // command is Polykey-specific, the code doesn't really matter
+                // that much.
+                throw new errors.ErrorPolykeyCLIEditSecret(
+                  'Failed to edit secret',
+                );
               } else {
                 throw e;
               }
@@ -94,7 +105,29 @@ class CommandEdit extends CommandPolykey {
         // If the editor exited with a code other than zero, then execSync
         // will throw an error. So, in the case of saving the file but the
         // editor crashing, the program won't save the updated secret.
-        execSync(`${process.env.EDITOR} \"${tmpFile}\"`, { stdio: 'inherit' });
+        await new Promise<void>((resolve, reject) => {
+          // If $EDITOR is unset, default to nano. If that doesn't exist, then
+          // the command will raise an error.
+          const editorProc = spawn(process.env.EDITOR ?? 'nano', [tmpFile], {
+            stdio: 'inherit',
+          });
+          editorProc.on('error', (e) => {
+            const error = new errors.ErrorPolykeyCLIEditSecret(
+              `Failed to run command ${process.env.EDITOR}`,
+              { cause: e },
+            );
+            reject(error);
+          });
+          editorProc.on('close', (code) => {
+            if (code !== 0) {
+              const error = new errors.ErrorPolykeyCLIEditSecret(
+                `Editor exited with code ${code}`,
+              );
+              reject(error);
+            }
+            resolve();
+          });
+        });
         let content: string;
         try {
           const buffer = await this.fs.promises.readFile(tmpFile);

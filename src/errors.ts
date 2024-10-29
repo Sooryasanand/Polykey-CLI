@@ -75,6 +75,15 @@ class ErrorPolykeyCLIAsynchronousDeadlock<T> extends ErrorPolykeyCLI<T> {
   exitCode = sysexits.SOFTWARE;
 }
 
+/**
+ * Unexpected error is a runtime error.
+ * If these exceptions occur, there is a bug. Most likely in Polykey.
+ */
+class ErrorPolykeyCLIUnexpectedError<T> extends ErrorPolykeyCLI<T> {
+  static description = 'An unexpected error occured';
+  exitCode = sysexits.SOFTWARE;
+}
+
 class ErrorPolykeyCLINodePath<T> extends ErrorPolykeyCLI<T> {
   static description = 'Cannot derive default node path from unknown platform';
   exitCode = sysexits.USAGE;
@@ -172,10 +181,16 @@ class ErrorPolykeyCLICatSecret<T> extends ErrorPolykeyCLI<T> {
   exitCode = 1;
 }
 
+class ErrorPolykeyCLIEditSecret<T> extends ErrorPolykeyCLI<T> {
+  static description = 'Failed to edit a secret';
+  exitCode = 1;
+}
+
 export {
   ErrorPolykeyCLI,
   ErrorPolykeyCLIUncaughtException,
   ErrorPolykeyCLIUnhandledRejection,
+  ErrorPolykeyCLIUnexpectedError,
   ErrorPolykeyCLIAsynchronousDeadlock,
   ErrorPolykeyCLINodePath,
   ErrorPolykeyCLIClientOptions,
@@ -196,4 +211,5 @@ export {
   ErrorPolykeyCLIRenameSecret,
   ErrorPolykeyCLIRemoveSecret,
   ErrorPolykeyCLICatSecret,
+  ErrorPolykeyCLIEditSecret,
 };
