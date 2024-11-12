@@ -27,10 +27,10 @@ class CommandStop extends CommandPolykey {
       );
       const statusInfo = clientStatus.statusInfo;
       if (statusInfo?.status === 'DEAD') {
-        process.stderr.write('Agent is already dead\n');
+        this.logger.warn('Agent is already dead');
         return;
       } else if (statusInfo?.status === 'STOPPING') {
-        process.stderr.write('Agent is already stopping\n');
+        this.logger.warn('Agent is already stopping');
         return;
       } else if (statusInfo?.status === 'STARTING') {
         throw new errors.ErrorPolykeyCLIAgentStatus('Agent is starting');
@@ -62,7 +62,7 @@ class CommandStop extends CommandPolykey {
             }),
           auth,
         );
-        process.stderr.write('Stopping Agent\n');
+        this.logger.warn('Stopping Agent');
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

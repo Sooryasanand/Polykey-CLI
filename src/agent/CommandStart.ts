@@ -253,7 +253,7 @@ class CommandStart extends CommandPolykey {
         pkAgent.addEventListener(
           polykeyEvents.EventPolykeyAgentStop.name,
           () => {
-            process.stderr.write('Stopping Agent\n');
+            this.logger.warn('Stopping Agent');
           },
           { once: true },
         );

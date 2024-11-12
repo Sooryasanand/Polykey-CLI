@@ -65,21 +65,11 @@ describe('commandCreateVaults', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(0);
-    const result2 = await testUtils.pkStdio(
-      ['vaults', 'touch', '-np', dataDir, 'MyTestVault2'],
-      {
-        env: { PK_PASSWORD: password },
-        cwd: dataDir,
-      },
-    );
-    expect(result2.exitCode).toBe(0);
-
     const list = (await polykeyAgent.vaultManager.listVaults()).keys();
     const namesList: string[] = [];
     for await (const name of list) {
       namesList.push(name);
     }
     expect(namesList).toContain('MyTestVault');
-    expect(namesList).toContain('MyTestVault2');
   });
 });

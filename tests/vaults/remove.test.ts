@@ -8,7 +8,7 @@ import * as ids from 'polykey/dist/ids';
 import * as keysUtils from 'polykey/dist/keys/utils';
 import * as testUtils from '../utils';
 
-describe('commandDeleteVault', () => {
+describe('commandRemoveVault', () => {
   const password = 'password';
   const logger = new Logger('CLI Test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
@@ -68,8 +68,8 @@ describe('commandDeleteVault', () => {
     });
   });
 
-  test('should delete vault', async () => {
-    command = ['vaults', 'delete', '-np', dataDir, vaultName];
+  test('should remove vault', async () => {
+    command = ['vaults', 'rm', '-np', dataDir, vaultName];
     await polykeyAgent.vaultManager.createVault(vaultName);
     let id = polykeyAgent.vaultManager.getVaultId(vaultName);
     expect(id).toBeTruthy();
