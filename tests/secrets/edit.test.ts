@@ -91,7 +91,7 @@ describe('commandEditSecret', () => {
       expect(contents.toString()).toStrictEqual(`${editedContent}\n`);
     });
   });
-  test('should fail to edit without a secret path specified', async () => {
+  test('should fail without secret path', async () => {
     const vaultName = 'vault' as VaultName;
     const command = ['secrets', 'edit', '-np', dataDir, vaultName];
     const result = await testUtils.pkStdio(command, {
@@ -163,6 +163,36 @@ describe('commandEditSecret', () => {
       expect(list.sort()).toStrictEqual([]);
     });
   });
+  test('should fail to write to directory', async () => {
+    const vaultName = 'vault' as VaultName;
+    const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    const secretName = 'secret';
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.mkdir(secretName);
+      });
+    });
+    const command = [
+      'secrets',
+      'edit',
+      '-np',
+      dataDir,
+      `${vaultName}:${secretName}`,
+    ];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password, EDITOR: editorExit },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('No such file or directory');
+    // Check no files were created
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      const list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual([]);
+    });
+  });
+  // First needs to be implemented in the handler itself
+  test.todo('should fail to write to invalid path');
   test('file contents should be fetched correctly', async () => {
     const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);

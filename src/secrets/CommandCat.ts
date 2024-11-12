@@ -1,4 +1,6 @@
 import type PolykeyClient from 'polykey/dist/PolykeyClient';
+import type { ContentOrErrorMessage } from 'polykey/dist/client/types';
+import type { ReadableStream } from 'stream/web';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -80,28 +82,44 @@ class CommandGet extends CommandPolykey {
         }
         const hasErrored = await binUtils.retryAuthentication(async (auth) => {
           // Write secret paths to input stream
-          const response = await pkClient.rpcClient.methods.vaultsSecretsGet();
+          const response = await pkClient.rpcClient.methods.vaultsSecretsCat();
           const writer = response.writable.getWriter();
           let first = true;
           for (const [vaultName, secretPath] of secretPaths) {
             await writer.write({
               nameOrId: vaultName,
               secretName: secretPath ?? '/',
-              metadata: first
-                ? { ...auth, options: { continueOnError: true } }
-                : undefined,
+              metadata: first ? auth : undefined,
             });
             first = false;
           }
           await writer.close();
           // Print out incoming data to standard out
           let hasErrored = false;
-          for await (const chunk of response.readable) {
-            if (chunk.error) {
+          // TypeScript cannot properly perform type narrowing on this type, so
+          // the `as` keyword is used to help it out.
+          for await (const result of response.readable as ReadableStream<ContentOrErrorMessage>) {
+            if (result.type === 'error') {
               hasErrored = true;
-              process.stderr.write(chunk.error);
+              switch (result.code) {
+                case 'ENOENT':
+                  // Attempt to cat a non-existent file
+                  process.stderr.write(
+                    `cat: ${result.reason}: No such file or directory\n`,
+                  );
+                  break;
+                case 'EISDIR':
+                  // Attempt to cat a directory
+                  process.stderr.write(
+                    `cat: ${result.reason}: Is a directory\n`,
+                  );
+                  break;
+                default:
+                  // No other code should be thrown
+                  throw result;
+              }
             } else {
-              process.stdout.write(chunk.secretContent);
+              process.stdout.write(result.secretContent);
             }
           }
           return hasErrored;

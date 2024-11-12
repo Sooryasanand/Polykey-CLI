@@ -40,15 +40,29 @@ describe('commandRemoveSecret', () => {
     });
   });
 
+  test('should fail with invalid vault name', async () => {
+    const vaultName = 'vault' as VaultName;
+    const secretName = 'secret';
+    const command = [
+      'secrets',
+      'rm',
+      '-np',
+      dataDir,
+      `${vaultName}:${secretName}`,
+    ];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('ErrorVaultsVaultUndefined');
+  });
   test('should remove secret', async () => {
     const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
     const secretName = 'secret';
-    const secretContent = 'this is the secret';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.addSecret(vault, secretName, secretContent);
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual([secretName]);
+      await vaultOps.addSecret(vault, secretName, secretName);
     });
     const command = [
       'secrets',
@@ -71,11 +85,8 @@ describe('commandRemoveSecret', () => {
     const vaultName = 'vault' as VaultName;
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
     const secretName = 'secret';
-    const secretContent = 'this is the secret';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.addSecret(vault, secretName, secretContent);
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual([secretName]);
+      await vaultOps.addSecret(vault, secretName, secretName);
     });
     const command = ['secrets', 'rm', '-np', dataDir, vaultName];
     const result = await testUtils.pkStdio(command, {
@@ -83,10 +94,32 @@ describe('commandRemoveSecret', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toInclude('EPERM');
+    expect(result.stderr).toInclude('Permission denied');
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual([secretName]);
+    });
+  });
+  test('should fail to remove non-existent path', async () => {
+    const vaultName = 'vault' as VaultName;
+    const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    const secretName = 'secret';
+    const command = [
+      'secrets',
+      'rm',
+      '-np',
+      dataDir,
+      `${vaultName}:${secretName}`,
+    ];
+    const result = await testUtils.pkStdio(command, {
+      env: { PK_PASSWORD: password },
+      cwd: dataDir,
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('No such file or directory');
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      const list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual([]);
     });
   });
   test('should remove multiple secrets', async () => {
@@ -101,13 +134,6 @@ describe('commandRemoveSecret', () => {
       await vaultOps.addSecret(vault, secretName2, secretName2);
       await vaultOps.addSecret(vault, secretName3, secretName3);
       await vaultOps.addSecret(vault, secretName4, secretName4);
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual([
-        secretName1,
-        secretName2,
-        secretName3,
-        secretName4,
-      ]);
     });
     const command = [
       'secrets',
@@ -140,12 +166,6 @@ describe('commandRemoveSecret', () => {
       await vaultOps.addSecret(vault, secretName2, secretName2);
       await vaultOps.addSecret(vault, secretName3, secretName3);
       vaultLogLength = (await vault.log()).length;
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual([
-        secretName1,
-        secretName2,
-        secretName3,
-      ]);
     });
     const command = [
       'secrets',
@@ -182,12 +202,6 @@ describe('commandRemoveSecret', () => {
       await vaultOps.addSecret(vault, secretPath1, secretPath1);
       await vaultOps.addSecret(vault, secretPath2, secretPath2);
       await vaultOps.addSecret(vault, secretPath3, secretPath3);
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual([
-        secretPath1,
-        secretPath2,
-        secretPath3,
-      ]);
     });
     const command = [
       'secrets',
@@ -222,12 +236,6 @@ describe('commandRemoveSecret', () => {
       await vaultOps.addSecret(vault, secretPath1, secretPath1);
       await vaultOps.addSecret(vault, secretPath2, secretPath2);
       await vaultOps.addSecret(vault, secretPath3, secretPath3);
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual([
-        secretPath1,
-        secretPath2,
-        secretPath3,
-      ]);
     });
     const command = [
       'secrets',
@@ -241,6 +249,7 @@ describe('commandRemoveSecret', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toInclude('Is a directory');
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual([
@@ -270,15 +279,6 @@ describe('commandRemoveSecret', () => {
         await vaultOps.addSecret(vault1, secretName4, secretName4);
         await vaultOps.addSecret(vault2, secretName5, secretName5);
         await vaultOps.addSecret(vault2, secretName6, secretName6);
-        const list1 = await vaultOps.listSecrets(vault1);
-        expect(list1.sort()).toStrictEqual([
-          secretName1,
-          secretName2,
-          secretName3,
-          secretName4,
-        ]);
-        const list2 = await vaultOps.listSecrets(vault2);
-        expect(list2.sort()).toStrictEqual([secretName5, secretName6]);
       },
     );
     const command = [

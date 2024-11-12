@@ -1,14 +1,12 @@
 import type PolykeyClient from 'polykey/dist/PolykeyClient';
-import type { ErrorMessage } from 'polykey/dist/client/types';
+import type { SuccessOrErrorMessage } from 'polykey/dist/client/types';
+import type { ReadableStream } from 'stream/web';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binParsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
-import {
-  ErrorPolykeyCLIMakeDirectory,
-  ErrorPolykeyCLIUncaughtException,
-} from '../errors';
+import { ErrorPolykeyCLIMakeDirectory } from '../errors';
 
 class CommandMkdir extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -79,29 +77,28 @@ class CommandMkdir extends CommandPolykey {
           // Print out incoming data to standard out, or incoming errors to
           // standard error.
           let hasErrored = false;
-          for await (const result of response.readable) {
+          // TypeScript cannot properly perform type narrowing on this type, so
+          // the `as` keyword is used to help it out.
+          for await (const result of response.readable as ReadableStream<SuccessOrErrorMessage>) {
             if (result.type === 'error') {
-              // TS cannot properly evaluate a type this deeply nested, so we use
-              // the as keyword to help it. Inside this block, the type of data
-              // is ensured to be 'error'.
-              const error = result as ErrorMessage;
               hasErrored = true;
-              let message: string = '';
-              switch (error.code) {
+              switch (result.code) {
                 case 'ENOENT':
-                  message = 'No such secret or directory';
+                  // Attempt to create a directory without existing parents
+                  process.stderr.write(
+                    `mkdir: cannot create directory ${result.reason}: No such file or directory\n`,
+                  );
                   break;
                 case 'EEXIST':
-                  message = 'Secret or directory exists';
+                  // Attempt to create a directory where something already exists
+                  process.stderr.write(
+                    `mkdir: cannot create directory ${result.reason}: File or directory exists\n`,
+                  );
                   break;
                 default:
-                  throw new ErrorPolykeyCLIUncaughtException(
-                    `Unexpected error code: ${error.code}`,
-                  );
+                  // No other code should be thrown
+                  throw result;
               }
-              process.stderr.write(
-                `${error.code}: cannot create directory ${error.reason}: ${message}\n`,
-              );
             }
           }
           return hasErrored;

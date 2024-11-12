@@ -65,7 +65,7 @@ describe('commandMkdir', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toInclude('EEXIST'); // Root directory is already a directory
+    expect(result.stderr).toInclude('File or directory exists');
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       expect(await vaultOps.listSecrets(vault)).toEqual([]);
     });
@@ -114,7 +114,7 @@ describe('commandMkdir', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toInclude('ENOENT');
+    expect(result.stderr).toInclude('No such file or directory');
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
         const dirName1P = efs.readdir(dirName1);
@@ -139,7 +139,7 @@ describe('commandMkdir', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toInclude('EEXIST');
+    expect(result.stderr).toInclude('File or directory exists');
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
         const dirP = efs.readdir(dirName);
@@ -169,7 +169,7 @@ describe('commandMkdir', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toInclude('EEXIST');
+    expect(result.stderr).toInclude('File or directory exists');
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
         const stat = await efs.stat(secretName);
@@ -237,7 +237,7 @@ describe('commandMkdir', () => {
       cwd: dataDir,
     });
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toInclude('ENOENT');
+    expect(result.stderr).toInclude('No such file or directory');
     await polykeyAgent.vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {

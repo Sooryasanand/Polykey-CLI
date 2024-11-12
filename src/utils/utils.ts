@@ -425,22 +425,31 @@ function outputFormatterJson(json: string): string {
   return `${JSON.stringify(json, standardErrorReplacer)}\n`;
 }
 
-function outputFormatterError(err: Error): string {
+// Anything is throwable
+function outputFormatterError(err: any): string {
   let output = '';
   let indent = '  ';
   while (err != null) {
-    if (err instanceof networkErrors.ErrorPolykeyRemote) {
+    if (
+      err instanceof networkErrors.ErrorPolykeyRemote ||
+      err instanceof errors.ErrorPolykeyCLI
+    ) {
       output += `${err.name}: ${err.description}`;
       if (err.message && err.message !== '') {
         output += ` - ${err.message}`;
       }
-      if (err.metadata != null) {
+      if (
+        err instanceof networkErrors.ErrorPolykeyRemote &&
+        err.metadata != null
+      ) {
         output += '\n';
         for (const [key, value] of Object.entries(err.metadata)) {
           output += `${indent}${key}\t${value}\n`;
         }
+        output += `${indent}timestamp\t${err.timestamp}\n`;
+      } else {
+        output += '\n';
       }
-      output += `${indent}timestamp\t${err.timestamp}\n`;
       output += `${indent}cause: `;
       err = err.cause;
     } else if (err instanceof ErrorPolykey) {
@@ -473,8 +482,15 @@ function outputFormatterError(err: Error): string {
       } else {
         break;
       }
-    } else {
+    } else if (err instanceof Error) {
       output += `${err.name}`;
+      if (err.message && err.message !== '') {
+        output += `: ${err.message}`;
+      }
+      output += '\n';
+      break;
+    } else {
+      output += composeErrorMessage(err);
       if (err.message && err.message !== '') {
         output += `: ${err.message}`;
       }
@@ -484,6 +500,39 @@ function outputFormatterError(err: Error): string {
     indent = indent + '  ';
   }
   return output;
+}
+
+function composeErrorMessage(error: any) {
+  switch (typeof error) {
+    case 'boolean':
+    case 'number':
+    case 'string':
+    case 'bigint':
+    case 'symbol':
+      return `Thrown non-error literal '${String(error)}'`;
+    case 'object':
+      if (error == null) break;
+      if ('name' in error && typeof error.name === 'string') {
+        return `Thrown '${error.name}'`;
+      }
+      if (error.constructor?.name != null) {
+        if (error.constructor.name === 'Object') {
+          // If the constructor name is Object, then the error is a JSON
+          // object.
+          return `Thrown non-error JSON '${JSON.stringify(error)}'`;
+        } else {
+          // Otherwise, it is a regular object.
+          return `Thrown non-error object '${error.constructor.name}'`;
+        }
+      }
+      break;
+  }
+  try {
+    return `Thrown non-error value '${error}'`;
+  } catch (e) {
+    if (e instanceof TypeError) return `Thrown non-error value 'null'`;
+    else throw e;
+  }
 }
 
 /**
@@ -587,6 +636,7 @@ export {
   outputFormatterDict,
   outputFormatterJson,
   outputFormatterError,
+  composeErrorMessage,
   retryAuthentication,
   remoteErrorCause,
   encodeEscapedWrapped,
