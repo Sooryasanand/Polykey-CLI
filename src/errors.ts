@@ -84,6 +84,11 @@ class ErrorPolykeyCLIUnexpectedError<T> extends ErrorPolykeyCLI<T> {
   exitCode = sysexits.SOFTWARE;
 }
 
+class ErrorPolykeyCLISubprocessFailure<T> extends ErrorPolykeyCLI<T> {
+  static description = 'A subprocess failed to exit gracefully';
+  exitCode = sysexits.UNKNOWN;
+}
+
 class ErrorPolykeyCLINodePath<T> extends ErrorPolykeyCLI<T> {
   static description = 'Cannot derive default node path from unknown platform';
   exitCode = sysexits.USAGE;
@@ -191,6 +196,7 @@ export {
   ErrorPolykeyCLIUncaughtException,
   ErrorPolykeyCLIUnhandledRejection,
   ErrorPolykeyCLIUnexpectedError,
+  ErrorPolykeyCLISubprocessFailure,
   ErrorPolykeyCLIAsynchronousDeadlock,
   ErrorPolykeyCLINodePath,
   ErrorPolykeyCLIClientOptions,

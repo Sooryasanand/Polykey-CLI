@@ -1,4 +1,5 @@
 import type { VaultName } from 'polykey/dist/vaults/types';
+import type { ParsedSecretPathValue } from '@/types';
 import path from 'path';
 import fs from 'fs';
 import fc from 'fast-check';
@@ -17,6 +18,8 @@ describe('commandEnv', () => {
   const vaultName = 'vault' as VaultName;
   let dataDir: string;
   let polykeyAgent: PolykeyAgent;
+
+  const secretContentNewlineArb = fc.stringMatching(/^[ -~]+\n$/).noShrink();
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -59,6 +62,7 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}:SECRET`,
       '--',
+      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -85,6 +89,7 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}:SECRET1`,
       `${vaultName}:SECRET2`,
+      '--',
       '--',
       'node',
       '-e',
@@ -115,6 +120,7 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}:dir1`,
       '--',
+      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -141,6 +147,7 @@ describe('commandEnv', () => {
       '--env-format',
       'unix',
       `${vaultName}:SECRET=SECRET_NEW`,
+      '--',
       '--',
       'node',
       '-e',
@@ -169,6 +176,7 @@ describe('commandEnv', () => {
       '--env-format',
       'unix',
       `${vaultName}:dir1=SECRET_NEW`,
+      '--',
       '--',
       'node',
       '-e',
@@ -203,6 +211,7 @@ describe('commandEnv', () => {
       `${vaultName}:SECRET2`,
       `${vaultName}:dir1`,
       '--',
+      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -230,6 +239,7 @@ describe('commandEnv', () => {
       '--env-format',
       'unix',
       `${vaultName}:SECRET1`,
+      '--',
       '--',
       'node',
       '-e',
@@ -266,6 +276,7 @@ describe('commandEnv', () => {
       `${vaultName}:SECRET2=SECRET1`,
       `${vaultName}:SECRET3=SECRET4`,
       `${vaultName}:dir1`,
+      '--',
       '--',
       'node',
       '-e',
@@ -669,12 +680,11 @@ describe('commandEnv', () => {
   });
   test('newlines in secrets are untouched', async () => {
     const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    const secretName = 'SECRET';
+    const secretContent =
+      'this is a secret\nit has multiple lines\n\nand some more lines';
     await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-      await vaultOps.addSecret(
-        vault,
-        'SECRET',
-        'this is a secret\nit has multiple lines\n',
-      );
+      await vaultOps.addSecret(vault, secretName, secretContent);
     });
     const command = [
       'secrets',
@@ -683,7 +693,8 @@ describe('commandEnv', () => {
       dataDir,
       '--env-format',
       'unix',
-      `${vaultName}:SECRET`,
+      `${vaultName}:${secretName}`,
+      '--',
       '--',
       'node',
       '-e',
@@ -694,7 +705,179 @@ describe('commandEnv', () => {
     });
     expect(result.exitCode).toBe(0);
     const jsonOut = JSON.parse(result.stdout);
-    expect(jsonOut['SECRET']).toBe('this is a secret\nit has multiple lines\n');
+    expect(jsonOut[secretName]).toBe(secretContent);
+  });
+  test.prop([testUtils.vaultNameArb, secretContentNewlineArb], {
+    numRuns: 2,
+  })(
+    'single trailing newline is automatically removed',
+    async (vaultName, secretContent) => {
+      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+      const secretName = 'SECRET';
+      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+        await vaultOps.addSecret(vault, secretName, secretContent);
+      });
+      const command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--env-format',
+        'unix',
+        `${vaultName}:${secretName}`,
+        '--',
+        '--',
+        'node',
+        '-e',
+        'console.log(JSON.stringify(process.env))',
+      ];
+      const result = await testUtils.pkExec(command, {
+        env: { PK_PASSWORD: password },
+      });
+      expect(result.exitCode).toBe(0);
+      const jsonOut = JSON.parse(result.stdout);
+      // Remove last character
+      expect(jsonOut[secretName]).toBe(secretContent.slice(0, -1));
+    },
+  );
+  test.prop([testUtils.vaultNameArb, secretContentNewlineArb], {
+    numRuns: 2,
+  })(
+    'trailing newlines are preserved with option',
+    async (vaultName, secretContent) => {
+      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+      const secretName = 'SECRET';
+      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+        await vaultOps.addSecret(vault, secretName, secretContent);
+      });
+      const command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--env-format',
+        'unix',
+        '--preserve-newline',
+        `${vaultName}:${secretName}`,
+        `${vaultName}:${secretName}`,
+        '--',
+        '--',
+        'node',
+        '-e',
+        'console.log(JSON.stringify(process.env))',
+      ];
+      const result = await testUtils.pkExec(command, {
+        env: { PK_PASSWORD: password },
+      });
+      expect(result.exitCode).toBe(0);
+      const jsonOut = JSON.parse(result.stdout);
+      expect(jsonOut[secretName]).toBe(secretContent);
+      await polykeyAgent.vaultManager.destroyVault(vaultId);
+    },
+  );
+  test('preserves only the newline when specified', async () => {
+    const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    const secretName1 = 'SECRET1';
+    const secretName2 = 'SECRET2';
+    const secretName3 = 'SECRET3';
+    const secretContent1 = 'content1\n';
+    const secretContent2 = 'content2\n';
+    const secretContent3 = 'content3\n';
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      await vaultOps.addSecret(vault, secretName1, secretContent1);
+      await vaultOps.addSecret(vault, secretName2, secretContent2);
+      await vaultOps.addSecret(vault, secretName3, secretContent3);
+    });
+    const command = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      `${vaultName}`,
+      '--preserve-newline',
+      `${vaultName}:${secretName1}`,
+      '--',
+      '--',
+      'node',
+      '-e',
+      'console.log(JSON.stringify(process.env))',
+    ];
+    const result = await testUtils.pkExec(command, {
+      env: { PK_PASSWORD: password },
+    });
+    expect(result.exitCode).toBe(0);
+    const jsonOut = JSON.parse(result.stdout);
+    expect(jsonOut[secretName1]).toBe(secretContent1);
+    expect(jsonOut[secretName2]).toBe(secretContent2.slice(0, -1));
+    expect(jsonOut[secretName3]).toBe(secretContent3.slice(0, -1));
+  });
+  test('preserves newlines of all secrets with only vault name', async () => {
+    const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    const secretName1 = 'SECRET1';
+    const secretName2 = 'SECRET2';
+    const secretName3 = 'SECRET3';
+    const secretContent1 = 'content1\n';
+    const secretContent2 = 'content2\n';
+    const secretContent3 = 'content3\n';
+    await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+      await vaultOps.addSecret(vault, secretName1, secretContent1);
+      await vaultOps.addSecret(vault, secretName2, secretContent2);
+      await vaultOps.addSecret(vault, secretName3, secretContent3);
+    });
+    // Test for exporting all the secrets via vault name
+    const command1 = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      `${vaultName}`,
+      '--preserve-newline',
+      `${vaultName}`,
+      '--',
+      '--',
+      'node',
+      '-e',
+      'console.log(JSON.stringify(process.env))',
+    ];
+    const result1 = await testUtils.pkExec(command1, {
+      env: { PK_PASSWORD: password },
+    });
+    expect(result1.exitCode).toBe(0);
+    const jsonOut1 = JSON.parse(result1.stdout);
+    expect(jsonOut1[secretName1]).toBe(secretContent1);
+    expect(jsonOut1[secretName2]).toBe(secretContent2);
+    expect(jsonOut1[secretName3]).toBe(secretContent3);
+    // Test for exporting all the secrets manually one-by-one
+    const command2 = [
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--env-format',
+      'unix',
+      `${vaultName}:${secretName1}`,
+      `${vaultName}:${secretName2}`,
+      `${vaultName}:${secretName3}`,
+      '--preserve-newline',
+      `${vaultName}`,
+      '--',
+      '--',
+      'node',
+      '-e',
+      'console.log(JSON.stringify(process.env))',
+    ];
+    const result2 = await testUtils.pkExec(command2, {
+      env: { PK_PASSWORD: password },
+    });
+    expect(result2.exitCode).toBe(0);
+    const jsonOut2 = JSON.parse(result2.stdout);
+    expect(jsonOut2[secretName1]).toBe(secretContent1);
+    expect(jsonOut2[secretName2]).toBe(secretContent2);
+    expect(jsonOut2[secretName3]).toBe(secretContent3);
   });
   test.prop([
     testUtils.secretPathEnvArrayArb,
@@ -704,8 +887,10 @@ describe('commandEnv', () => {
     'parse secrets env arguments',
     async (secretPathEnvArray, cmd, cmdArgsArray) => {
       let output:
-        | [Array<[string, string?, string?]>, Array<string>]
+        | [Array<ParsedSecretPathValue>, Array<string>, boolean]
         | undefined = undefined;
+      // By running the parser directly, we are bypassing commander, so it works
+      // with a single --
       const args: Array<string> = [
         ...secretPathEnvArray,
         '--',
@@ -720,15 +905,15 @@ describe('commandEnv', () => {
         return binParsers.parseSecretPath(v);
       });
       expect(parsedEnvs).toMatchObject(expectedSecretPathArray);
-      expect(parsedArgs).toMatchObject(['--', cmd, ...cmdArgsArray]);
+      expect(parsedArgs).toMatchObject([cmd, ...cmdArgsArray]);
     },
   );
   test('handles no arguments', async () => {
     const command = ['secrets', 'env', '-np', dataDir, '--env-format', 'unix'];
-    const result1 = await testUtils.pkExec(command, {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
-    expect(result1.exitCode).toBe(64);
+    expect(result.exitCode).toBe(64);
   });
   test('handles providing no secret paths', async () => {
     const command = [
@@ -739,12 +924,13 @@ describe('commandEnv', () => {
       '--env-format',
       'unix',
       '--',
+      '--',
       'someCommand',
     ];
-    const result1 = await testUtils.pkExec(command, {
+    const result = await testUtils.pkExec(command, {
       env: { PK_PASSWORD: password },
     });
-    expect(result1.exitCode).toBe(64);
+    expect(result.exitCode).toBe(64);
   });
   test('should output all secrets without explicit secret path', async () => {
     const vaultId1 = await polykeyAgent.vaultManager.createVault(

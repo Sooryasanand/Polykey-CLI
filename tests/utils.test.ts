@@ -8,6 +8,7 @@ import * as polykeyErrors from 'polykey/dist/errors';
 import * as fc from 'fast-check';
 import * as binUtils from '@/utils/utils';
 import * as binParsers from '@/utils/parsers';
+import * as testUtils from './utils';
 
 describe('outputFormatters', () => {
   const nonPrintableCharArb = fc
@@ -329,10 +330,6 @@ describe('outputFormatters', () => {
 });
 
 describe('parsers', () => {
-  const vaultNameArb = fc.stringOf(
-    fc.char().filter((c) => binParsers.vaultNameRegex.test(c)),
-    { minLength: 1, maxLength: 100 },
-  );
   const singleSecretPathArb = fc.stringOf(
     fc.char().filter((c) => binParsers.secretPathRegex.test(c)),
     { minLength: 1, maxLength: 25 },
@@ -349,20 +346,20 @@ describe('parsers', () => {
     .tuple(valueFirstCharArb, valueRestCharArb)
     .map((components) => components.join(''));
 
-  test.prop([vaultNameArb], { numRuns: 100 })(
+  test.prop([testUtils.vaultNameArb], { numRuns: 100 })(
     'should parse vault name',
     async (vaultName) => {
       expect(binParsers.parseVaultName(vaultName)).toEqual(vaultName);
     },
   );
-  test.prop([vaultNameArb], { numRuns: 10 })(
+  test.prop([testUtils.vaultNameArb], { numRuns: 10 })(
     'should parse secret path with only vault name',
     async (vaultName) => {
       const result = [vaultName, undefined, undefined];
       expect(binParsers.parseSecretPath(vaultName)).toEqual(result);
     },
   );
-  test.prop([vaultNameArb, secretPathArb], { numRuns: 100 })(
+  test.prop([testUtils.vaultNameArb, secretPathArb], { numRuns: 100 })(
     'should parse full secret path with vault name',
     async (vaultName, secretPath) => {
       const query = `${vaultName}:${secretPath}`;
@@ -370,7 +367,9 @@ describe('parsers', () => {
       expect(binParsers.parseSecretPath(query)).toEqual(result);
     },
   );
-  test.prop([vaultNameArb, secretPathArb, valueDataArb], { numRuns: 100 })(
+  test.prop([testUtils.vaultNameArb, secretPathArb, valueDataArb], {
+    numRuns: 100,
+  })(
     'should parse full secret path with vault name and value',
     async (vaultName, secretPath, valueData) => {
       const query = `${vaultName}:${secretPath}=${valueData}`;

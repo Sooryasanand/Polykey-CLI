@@ -1,11 +1,12 @@
 import type PolykeyClient from 'polykey/dist/PolykeyClient';
+import type { ParsedSecretPathValue } from '../types';
 import path from 'path';
 import os from 'os';
 import * as utils from 'polykey/dist/utils';
+import CommandPolykey from '../CommandPolykey';
 import * as binProcessors from '../utils/processors';
 import * as binUtils from '../utils';
 import * as binErrors from '../errors';
-import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binParsers from '../utils/parsers';
 
@@ -14,7 +15,7 @@ class CommandEnv extends CommandPolykey {
     super(...args);
     this.name('env');
     this.description(
-      `Run a command with the given secrets and env variables using process replacement. If no command is specified then the variables are printed to stdout in the format specified by env-format.`,
+      `Run a command with the given secrets and env variables. If no command is specified then the variables are printed to stdout in the format specified by env-format.`,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
@@ -22,18 +23,14 @@ class CommandEnv extends CommandPolykey {
     this.addOption(binOptions.envFormat);
     this.addOption(binOptions.envInvalid);
     this.addOption(binOptions.envDuplicate);
+    this.addOption(binOptions.preserveNewline);
     this.argument(
       '<args...>',
-      'command and arguments formatted as [envPaths...][-- cmd [cmdArgs...]]',
+      'command and arguments formatted as <envPaths...> -- [ cmd [cmdArgs...]]',
       binParsers.parseEnvArgs,
     );
-    this.passThroughOptions(); // Let -- pass through as-is to parse as delimiter for cmd
     this.action(
-      async (
-        args: [Array<[string, string?, string?]>, Array<string>],
-        options,
-      ) => {
-        args[1].shift();
+      async (args: [Array<ParsedSecretPathValue>, Array<string>], options) => {
         const { default: PolykeyClient } = await import(
           'polykey/dist/PolykeyClient'
         );
@@ -46,13 +43,22 @@ class CommandEnv extends CommandPolykey {
           envDuplicate: 'keep' | 'overwrite' | 'warn' | 'error';
           envFormat: 'auto' | 'unix' | 'cmd' | 'powershell' | 'json';
         } = options;
+        // Populate a set with all the paths we want to preserve newlines for
+        const preservedSecrets = new Set<string>();
+        for (const [vaultName, secretPath] of options.preserveNewline) {
+          // The vault name is guaranteed to have a value.
+          // If a secret path is undefined, then the newline preservation was
+          // targeting the secrets of the entire vault. Otherwise, the target
+          // was a single secret.
+          if (secretPath == null) preservedSecrets.add(vaultName);
+          else preservedSecrets.add(`${vaultName}:${secretPath}`);
+        }
         // There are a few stages here
         // 1. parse the desired secrets
         // 2. obtain the desired secrets
         // 3. switching behaviour here based on parameters
         //   a. exec the command with the provided env variables from the secrets
         //   b. output the env variables in the desired format
-
         const [envVariables, [cmd, ...argv]] = args;
         const clientOptions = await binProcessors.processClientOptions(
           options.nodePath,
@@ -160,7 +166,26 @@ class CommandEnv extends CommandPolykey {
                     utils.never();
                 }
               }
-              envp[newName] = secretContent;
+
+              // Find if we need to preserve the newline for this secret
+              let preserveNewline = false;
+              // If only the vault name is specified to be preserved, then
+              // preserve the newlines of all secrets inside the vault.
+              // Otherwise, if a full secret path has been specified, then
+              // preserve that secret path.
+              if (
+                preservedSecrets.has(nameOrId) ||
+                preservedSecrets.has(`${nameOrId}:${newName}`)
+              ) {
+                preserveNewline = true;
+              }
+
+              // Trim the single trailing newline if it exists
+              if (!preserveNewline && secretContent.endsWith('\n')) {
+                envp[newName] = secretContent.slice(0, -1);
+              } else {
+                envp[newName] = secretContent;
+              }
               envpPath[newName] = {
                 nameOrId,
                 secretName,
@@ -175,14 +200,26 @@ class CommandEnv extends CommandPolykey {
           // Here we want to switch between the different usages
           const platform = os.platform();
           if (cmd != null) {
-            // If a cmd is| provided then we default to exec it
+            // If a cmd is provided then we default to exec it
             switch (platform) {
-              case 'linux':
-              // Fallthrough
+              case 'linux': // Fallthrough
               case 'darwin':
                 {
                   const { exec } = await import('@matrixai/exec');
-                  exec.execvp(cmd, argv, envp);
+                  try {
+                    exec.execvp(cmd, argv, envp);
+                  } catch (e) {
+                    if ('code' in e && e.code === 'GenericFailure') {
+                      throw new binErrors.ErrorPolykeyCLISubprocessFailure(
+                        `Command failed with error ${e}`,
+                        {
+                          cause: e,
+                          data: { command: [cmd, ...argv] },
+                        },
+                      );
+                    }
+                    throw e;
+                  }
                 }
                 break;
               default: {

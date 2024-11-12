@@ -112,6 +112,11 @@ const cmdArgsArrayArb = fc
   })
   .noShrink();
 
+const vaultNameArb = fc
+  .string({ minLength: 1, maxLength: 100 })
+  .filter((str) => binParsers.vaultNameRegex.test(str))
+  .noShrink();
+
 export {
   testIf,
   describeIf,
@@ -120,4 +125,5 @@ export {
   secretPathEnvArb,
   secretPathEnvArrayArb,
   cmdArgsArrayArb,
+  vaultNameArb,
 };

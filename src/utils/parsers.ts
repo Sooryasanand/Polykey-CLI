@@ -1,5 +1,6 @@
 import type { Host, Hostname, Port } from 'polykey/dist/network/types';
 import type { SeedNodes } from 'polykey/dist/nodes/types';
+import type { ParsedSecretPathValue } from '../types';
 import commander from 'commander';
 import * as validationUtils from 'polykey/dist/validation/utils';
 import * as validationErrors from 'polykey/dist/validation/errors';
@@ -56,9 +57,9 @@ function parseCoreCount(v: string): number | undefined {
   switch (v) {
     case 'all':
       return 0;
-    case 'none':
-    case 'no':
-    case 'false':
+    case 'none': // Fallthrough
+    case 'no': // Fallthrough
+    case 'false': // Fallthrough
     case 'null':
       return undefined;
     default:
@@ -81,7 +82,7 @@ function parseVaultName(vaultName: string): string {
 //      If 'vault1:', an error is thrown
 //      If 'a/b/c', an error is thrown
 // Splits out everything after an `=` separator
-function parseSecretPath(inputPath: string): [string, string?, string?] {
+function parseSecretPath(inputPath: string): ParsedSecretPathValue {
   // The colon character `:` is prohibited in vaultName, so it's first occurence
   // means that this is the delimiter between vaultName and secretPath.
   const colonIndex = inputPath.indexOf(':');
@@ -116,7 +117,7 @@ function parseSecretPath(inputPath: string): [string, string?, string?] {
   return [vaultName, secretPath, value];
 }
 
-function parseSecretPathValue(secretPath: string): [string, string?, string?] {
+function parseSecretPathValue(secretPath: string): ParsedSecretPathValue {
   const [vaultName, directoryPath, value] = parseSecretPath(secretPath);
   if (value != null && !secretPathValueRegex.test(value)) {
     throw new commander.InvalidArgumentError(
@@ -126,7 +127,7 @@ function parseSecretPathValue(secretPath: string): [string, string?, string?] {
   return [vaultName, directoryPath, value];
 }
 
-function parseSecretPathEnv(secretPath: string): [string, string?, string?] {
+function parseSecretPathEnv(secretPath: string): ParsedSecretPathValue {
   const [vaultName, directoryPath, value] = parseSecretPath(secretPath);
   if (value != null && !environmentVariableRegex.test(value)) {
     throw new commander.InvalidArgumentError(
@@ -202,30 +203,29 @@ const parseSeedNodes: (data: string) => [SeedNodes, boolean] =
  */
 function parseEnvArgs(
   value: string,
-  prev: [Array<[string, string?, string?]>, Array<string>] | undefined,
-): [Array<[string, string?, string?]>, Array<string>] {
-  const current: [Array<[string, string?, string?]>, Array<string>] = prev ?? [
-    [],
-    [],
-  ];
-  if (current[1].length === 0) {
+  prev: [Array<ParsedSecretPathValue>, Array<string>, boolean] | undefined,
+): [Array<ParsedSecretPathValue>, Array<string>, boolean] {
+  const current: [Array<ParsedSecretPathValue>, Array<string>, boolean] =
+    prev ?? [[], [], false];
+  const [secretsList, commandList, parsingCommandCurrent] = current;
+  let parsingCommand = parsingCommandCurrent;
+  if (!parsingCommand) {
     // Parse a secret path
     if (value !== '--') {
-      current[0].push(parseSecretPathEnv(value));
+      secretsList.push(parseSecretPathEnv(value));
     } else {
-      current[1].push(value);
-      return current;
+      parsingCommand = true;
     }
   } else {
     // Otherwise we just have the cmd args
-    current[1].push(value);
+    commandList.push(value);
   }
-  if (current[0].length === 0 && current[1].length > 0) {
+  if (secretsList.length === 0 && commandList.length > 0) {
     throw new commander.InvalidArgumentError(
       'You must provide at least 1 secret path',
     );
   }
-  return current;
+  return [secretsList, commandList, parsingCommand];
 }
 
 export {

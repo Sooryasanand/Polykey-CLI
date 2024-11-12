@@ -22,7 +22,9 @@ class CommandEdit extends CommandPolykey {
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (secretPath, options) => {
+    this.action(async (fullSecretPath, options) => {
+      const vaultName = fullSecretPath[0];
+      const secretPath = fullSecretPath[1] ?? '/';
       const os = await import('os');
       const { spawn } = await import('child_process');
       const vaultsErrors = await import('polykey/dist/vaults/errors');
@@ -60,13 +62,13 @@ class CommandEdit extends CommandPolykey {
           },
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const tmpFile = path.join(tmpDir, path.basename(secretPath[1]));
+        const tmpFile = path.join(tmpDir, path.basename(secretPath));
         const secretExists = await binUtils.retryAuthentication(
           async (auth) => {
             let exists = true;
             const response = await pkClient.rpcClient.methods.vaultsSecretsGet({
-              nameOrId: secretPath[0],
-              secretName: secretPath[1] ?? '/',
+              nameOrId: vaultName,
+              secretName: secretPath,
               metadata: auth,
             });
             try {
@@ -86,7 +88,7 @@ class CommandEdit extends CommandPolykey {
                 // First, write the inline error to standard error like other
                 // secrets commands do.
                 process.stderr.write(
-                  `edit: ${secretPath[1] ?? '/'}: No such file or directory\n`,
+                  `edit: ${secretPath}: No such file or directory\n`,
                 );
                 // Then, throw an error to get the non-zero exit code. As this
                 // command is Polykey-specific, the code doesn't really matter
@@ -111,22 +113,33 @@ class CommandEdit extends CommandPolykey {
           const editorProc = spawn(process.env.EDITOR ?? 'nano', [tmpFile], {
             stdio: 'inherit',
           });
-          editorProc.on('error', (e) => {
-            const error = new errors.ErrorPolykeyCLIEditSecret(
-              `Failed to run command ${process.env.EDITOR}`,
+          // Define event handlers
+          const cleanup = () => {
+            editorProc.removeListener('error', onError);
+            editorProc.removeListener('close', onClose);
+          };
+          const onError = (e: Error) => {
+            cleanup();
+            const error = new errors.ErrorPolykeyCLISubprocessFailure(
+              `Failed to run command '${process.env.EDITOR}'`,
               { cause: e },
             );
             reject(error);
-          });
-          editorProc.on('close', (code) => {
+          };
+          const onClose = (code: number | null) => {
+            cleanup();
             if (code !== 0) {
-              const error = new errors.ErrorPolykeyCLIEditSecret(
+              const error = new errors.ErrorPolykeyCLISubprocessFailure(
                 `Editor exited with code ${code}`,
               );
               reject(error);
+            } else {
+              resolve();
             }
-            resolve();
-          });
+          };
+          // Connect event handlers to events
+          editorProc.on('error', onError);
+          editorProc.on('close', onClose);
         });
         let content: string;
         try {
@@ -160,8 +173,8 @@ class CommandEdit extends CommandPolykey {
           async (auth) =>
             await pkClient.rpcClient.methods.vaultsSecretsWriteFile({
               metadata: auth,
-              nameOrId: secretPath[0],
-              secretName: secretPath[1],
+              nameOrId: vaultName,
+              secretName: secretPath,
               secretContent: content,
             }),
           meta,
