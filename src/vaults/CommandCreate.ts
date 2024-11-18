@@ -10,7 +10,6 @@ class CommandCreate extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
     this.name('create');
-    this.aliases(['touch']);
     this.description('Create a new Vault');
     this.argument(
       '<vaultName>',

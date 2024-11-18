@@ -8,11 +8,12 @@ import * as binParsers from '../utils/parsers';
 class CommandDelete extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
-    this.name('delete');
-    this.description('Delete an Existing Vault');
+    this.name('rm');
+    this.alias('remove');
+    this.description('Remove an existing Vault');
     this.argument(
       '<vaultName>',
-      'Name of the vault to be deleted',
+      'Name of the vault to be removed',
       binParsers.parseVaultName,
     );
     this.addOption(binOptions.nodeId);
