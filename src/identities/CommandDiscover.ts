@@ -103,8 +103,8 @@ class CommandDiscover extends CommandPolykey {
                   case 'queued':
                     queuedSet.add(vertex);
                     break;
-                  case 'processed':
-                  case 'cancelled':
+                  case 'processed': // Fallthrough
+                  case 'cancelled': // Fallthrough
                   case 'failed':
                     queuedSet.delete(vertex);
                     break;

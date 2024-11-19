@@ -61,6 +61,8 @@ type PromiseDeconstructed<T> = {
   rejectP: (reason?: any) => void;
 };
 
+type ParsedSecretPathValue = [string, string?, string?];
+
 export type {
   TableRow,
   TableOptions,
@@ -69,4 +71,5 @@ export type {
   AgentChildProcessInput,
   AgentChildProcessOutput,
   PromiseDeconstructed,
+  ParsedSecretPathValue,
 };

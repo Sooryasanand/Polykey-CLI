@@ -318,6 +318,17 @@ const parents = new commander.Option(
   'If enabled, create all parent directories as well. If the directories exist, do nothing.',
 ).default(false);
 
+const preserveNewline = new commander.Option(
+  '-pn --preserve-newline <path>',
+  'Preserve the last trailing newline for the secret content',
+)
+  .argParser((value: string, previous: Array<[string, string?, string?]>) => {
+    const out = previous ?? [];
+    out.push(binParsers.parseSecretPathEnv(value));
+    return out;
+  })
+  .default([]);
+
 export {
   nodePath,
   format,
@@ -361,4 +372,5 @@ export {
   order,
   recursive,
   parents,
+  preserveNewline,
 };

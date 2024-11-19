@@ -155,9 +155,9 @@ function encodeEscaped(str: string): string {
         return '\\v'; // Encode tab
       case '\f':
         return '\\f'; // Encode tab
-      case '"':
-      case "'":
-      case '`':
+      case '"': // Fallthrough
+      case "'": // Fallthrough
+      case '`': // Fallthrough
       case '\\':
         return '\\' + char;
       // Add cases for other whitespace characters if needed
@@ -202,9 +202,9 @@ function decodeEscaped(str: string): string {
         return '\v';
       case 'f':
         return '\f';
-      case '"':
-      case "'":
-      case '`':
+      case '"': // Fallthrough
+      case "'": // Fallthrough
+      case '`': // Fallthrough
       case '\\':
         return lastChar;
     }
@@ -448,7 +448,11 @@ function outputFormatterError(err: any): string {
         }
         output += `${indent}timestamp\t${err.timestamp}\n`;
       } else {
-        output += '\n';
+        if (err.data && !utils.isEmptyObject(err.data)) {
+          output += `\n${indent}data: ${JSON.stringify(err.data)}\n`;
+        } else {
+          output += '\n';
+        }
       }
       output += `${indent}cause: `;
       err = err.cause;
@@ -504,10 +508,10 @@ function outputFormatterError(err: any): string {
 
 function composeErrorMessage(error: any) {
   switch (typeof error) {
-    case 'boolean':
-    case 'number':
-    case 'string':
-    case 'bigint':
+    case 'boolean': // Fallthrough
+    case 'number': // Fallthrough
+    case 'string': // Fallthrough
+    case 'bigint': // Fallthrough
     case 'symbol':
       return `Thrown non-error literal '${String(error)}'`;
     case 'object':
