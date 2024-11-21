@@ -84,8 +84,8 @@ class ErrorPolykeyCLIUnexpectedError<T> extends ErrorPolykeyCLI<T> {
   exitCode = sysexits.SOFTWARE;
 }
 
-class ErrorPolykeyCLISubprocessFailure<T> extends ErrorPolykeyCLI<T> {
-  static description = 'A subprocess failed to exit gracefully';
+class ErrorPolykeyCLIChildProcessFailure<T> extends ErrorPolykeyCLI<T> {
+  static description = 'A child process failed to exit gracefully';
   exitCode = sysexits.UNKNOWN;
 }
 
@@ -196,7 +196,7 @@ export {
   ErrorPolykeyCLIUncaughtException,
   ErrorPolykeyCLIUnhandledRejection,
   ErrorPolykeyCLIUnexpectedError,
-  ErrorPolykeyCLISubprocessFailure,
+  ErrorPolykeyCLIChildProcessFailure,
   ErrorPolykeyCLIAsynchronousDeadlock,
   ErrorPolykeyCLINodePath,
   ErrorPolykeyCLIClientOptions,
