@@ -196,38 +196,6 @@ const parsePort: (data: string) => Port = validateParserToArgParser(
 const parseSeedNodes: (data: string) => [SeedNodes, boolean] =
   validateParserToArgParser(nodesUtils.parseSeedNodes);
 
-/**
- * This parses the arguments used for the env command. It should be formatted as
- * <secretPath...> [-- cmd [cmdArgs...]]
- * The cmd part of the list is separated by using `--`.
- */
-function parseEnvArgs(
-  value: string,
-  prev: [Array<ParsedSecretPathValue>, Array<string>, boolean] | undefined,
-): [Array<ParsedSecretPathValue>, Array<string>, boolean] {
-  const current: [Array<ParsedSecretPathValue>, Array<string>, boolean] =
-    prev ?? [[], [], false];
-  const [secretsList, commandList, parsingCommandCurrent] = current;
-  let parsingCommand = parsingCommandCurrent;
-  if (!parsingCommand) {
-    // Parse a secret path
-    if (value !== '--') {
-      secretsList.push(parseSecretPathEnv(value));
-    } else {
-      parsingCommand = true;
-    }
-  } else {
-    // Otherwise we just have the cmd args
-    commandList.push(value);
-  }
-  if (secretsList.length === 0 && commandList.length > 0) {
-    throw new commander.InvalidArgumentError(
-      'You must provide at least 1 secret path',
-    );
-  }
-  return [secretsList, commandList, parsingCommand];
-}
-
 export {
   vaultNameRegex,
   secretPathRegex,
@@ -256,5 +224,4 @@ export {
   parseProviderId,
   parseIdentityId,
   parseProviderIdList,
-  parseEnvArgs,
 };

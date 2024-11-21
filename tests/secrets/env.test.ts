@@ -1,5 +1,4 @@
 import type { VaultName } from 'polykey/dist/vaults/types';
-import type { ParsedSecretPathValue } from '@/types';
 import path from 'path';
 import fs from 'fs';
 import fc from 'fast-check';
@@ -9,7 +8,6 @@ import PolykeyAgent from 'polykey/dist/PolykeyAgent';
 import { vaultOps } from 'polykey/dist/vaults';
 import * as keysUtils from 'polykey/dist/keys/utils';
 import { sysexits } from 'polykey/dist/utils';
-import * as binParsers from '@/utils/parsers';
 import * as testUtils from '../utils';
 
 describe('commandEnv', () => {
@@ -62,7 +60,6 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}:SECRET`,
       '--',
-      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -89,7 +86,6 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}:SECRET1`,
       `${vaultName}:SECRET2`,
-      '--',
       '--',
       'node',
       '-e',
@@ -120,7 +116,6 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}:dir1`,
       '--',
-      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -147,7 +142,6 @@ describe('commandEnv', () => {
       '--env-format',
       'unix',
       `${vaultName}:SECRET=SECRET_NEW`,
-      '--',
       '--',
       'node',
       '-e',
@@ -176,7 +170,6 @@ describe('commandEnv', () => {
       '--env-format',
       'unix',
       `${vaultName}:dir1=SECRET_NEW`,
-      '--',
       '--',
       'node',
       '-e',
@@ -211,7 +204,6 @@ describe('commandEnv', () => {
       `${vaultName}:SECRET2`,
       `${vaultName}:dir1`,
       '--',
-      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -239,7 +231,6 @@ describe('commandEnv', () => {
       '--env-format',
       'unix',
       `${vaultName}:SECRET1`,
-      '--',
       '--',
       'node',
       '-e',
@@ -276,7 +267,6 @@ describe('commandEnv', () => {
       `${vaultName}:SECRET2=SECRET1`,
       `${vaultName}:SECRET3=SECRET4`,
       `${vaultName}:dir1`,
-      '--',
       '--',
       'node',
       '-e',
@@ -695,7 +685,6 @@ describe('commandEnv', () => {
       'unix',
       `${vaultName}:${secretName}`,
       '--',
-      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -725,7 +714,6 @@ describe('commandEnv', () => {
         '--env-format',
         'unix',
         `${vaultName}:${secretName}`,
-        '--',
         '--',
         'node',
         '-e',
@@ -760,7 +748,6 @@ describe('commandEnv', () => {
         '--preserve-newline',
         `${vaultName}:${secretName}`,
         `${vaultName}:${secretName}`,
-        '--',
         '--',
         'node',
         '-e',
@@ -798,7 +785,6 @@ describe('commandEnv', () => {
       `${vaultName}`,
       '--preserve-newline',
       `${vaultName}:${secretName1}`,
-      '--',
       '--',
       'node',
       '-e',
@@ -838,7 +824,6 @@ describe('commandEnv', () => {
       '--preserve-newline',
       `${vaultName}`,
       '--',
-      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -865,7 +850,6 @@ describe('commandEnv', () => {
       '--preserve-newline',
       `${vaultName}`,
       '--',
-      '--',
       'node',
       '-e',
       'console.log(JSON.stringify(process.env))',
@@ -879,35 +863,6 @@ describe('commandEnv', () => {
     expect(jsonOut2[secretName2]).toBe(secretContent2);
     expect(jsonOut2[secretName3]).toBe(secretContent3);
   });
-  test.prop([
-    testUtils.secretPathEnvArrayArb,
-    fc.string().noShrink(),
-    testUtils.cmdArgsArrayArb,
-  ])(
-    'parse secrets env arguments',
-    async (secretPathEnvArray, cmd, cmdArgsArray) => {
-      let output:
-        | [Array<ParsedSecretPathValue>, Array<string>, boolean]
-        | undefined = undefined;
-      // By running the parser directly, we are bypassing commander, so it works
-      // with a single --
-      const args: Array<string> = [
-        ...secretPathEnvArray,
-        '--',
-        cmd,
-        ...cmdArgsArray,
-      ];
-      for (const arg of args) {
-        output = binParsers.parseEnvArgs(arg, output);
-      }
-      const [parsedEnvs, parsedArgs] = output!;
-      const expectedSecretPathArray = secretPathEnvArray.map((v) => {
-        return binParsers.parseSecretPath(v);
-      });
-      expect(parsedEnvs).toMatchObject(expectedSecretPathArray);
-      expect(parsedArgs).toMatchObject([cmd, ...cmdArgsArray]);
-    },
-  );
   test('handles no arguments', async () => {
     const command = ['secrets', 'env', '-np', dataDir, '--env-format', 'unix'];
     const result = await testUtils.pkExec(command, {

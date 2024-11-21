@@ -319,7 +319,7 @@ const parents = new commander.Option(
 ).default(false);
 
 const preserveNewline = new commander.Option(
-  '-pn --preserve-newline <path>',
+  '--preserve-newline <path>',
   'Preserve the last trailing newline for the secret content',
 )
   .argParser((value: string, previous: Array<[string, string?, string?]>) => {

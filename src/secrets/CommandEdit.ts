@@ -120,7 +120,7 @@ class CommandEdit extends CommandPolykey {
           };
           const onError = (e: Error) => {
             cleanup();
-            const error = new errors.ErrorPolykeyCLISubprocessFailure(
+            const error = new errors.ErrorPolykeyCLIChildProcessFailure(
               `Failed to run command '${process.env.EDITOR}'`,
               { cause: e },
             );
@@ -129,7 +129,7 @@ class CommandEdit extends CommandPolykey {
           const onClose = (code: number | null) => {
             cleanup();
             if (code !== 0) {
-              const error = new errors.ErrorPolykeyCLISubprocessFailure(
+              const error = new errors.ErrorPolykeyCLIChildProcessFailure(
                 `Editor exited with code ${code}`,
               );
               reject(error);
