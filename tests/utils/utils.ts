@@ -115,6 +115,7 @@ const cmdArgsArrayArb = fc
 const vaultNameArb = fc
   .string({ minLength: 1, maxLength: 100 })
   .filter((str) => binParsers.vaultNameRegex.test(str))
+  .filter((str) => !str.startsWith('-'))
   .noShrink();
 
 export {
