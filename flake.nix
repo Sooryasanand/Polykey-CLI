@@ -106,7 +106,7 @@
             shellHook = ''
               echo "Entering $(npm pkg get name)"
               set -o allexport
-              . <(pk secrets env Polykey-CLI)
+              . <(polykey secrets env Polykey-CLI)
               set +o allexport
               set -v
               ${lib.optionalString ci ''
