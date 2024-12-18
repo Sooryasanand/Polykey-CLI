@@ -283,7 +283,11 @@ class CommandEnv extends CommandPolykey {
                 // Formatting as a .env file
                 let data = '';
                 for (const [key, value] of Object.entries(envp)) {
-                  data += `${key}='${value}'\n`;
+                  if (options.envExport) {
+                    data += `export ${key}='${value}'\n`;
+                  } else {
+                    data += `${key}='${value}'\n`;
+                  }
                 }
                 process.stdout.write(
                   binUtils.outputFormatter({

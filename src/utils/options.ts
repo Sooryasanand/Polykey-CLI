@@ -318,6 +318,11 @@ const parents = new commander.Option(
   'If enabled, create all parent directories as well. If the directories exist, do nothing.',
 ).default(false);
 
+const envExport = new commander.Option(
+  '--export',
+  'If enabled, the export parameter sets the environment variable system-wide.',
+).default(false);
+
 const preserveNewline = new commander.Option(
   '--preserve-newline <path>',
   'Preserve the last trailing newline for the secret content',
@@ -372,5 +377,6 @@ export {
   order,
   recursive,
   parents,
+  envExport,
   preserveNewline,
 };
