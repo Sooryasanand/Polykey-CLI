@@ -924,4 +924,40 @@ describe('commandEnv', () => {
     expect(result.stdout).toContain("SECRET3='this is the secret3'");
     expect(result.stdout).toContain("SECRET4='this is the secret4'");
   });
+  test.each(['unix', 'cmd', 'powershell'])(
+    'sets and exports the environment variable in %s format with --export flag',
+    async (format) => {
+      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+        await vaultOps.addSecret(vault, 'SECRET', 'this is the secret');
+      });
+
+      const command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--env-format',
+        format,
+        '--export',
+        `${vaultName}:SECRET`,
+        '--',
+        'node'
+      ];
+
+      const result = await testUtils.pkExec(command, { env: { PK_PASSWORD: password } });
+
+      expect(result.exitCode).toBe(0);
+      const jsonOut = JSON.parse(result.stdout);
+
+      // Depending on the format, check that the variable is exported in the correct format
+      if (format === 'unix') {
+        expect(result.stdout).toContain("SECRET='this is the secret'");
+      } else if (format === 'cmd') {
+        expect(result.stdout).toContain('set "SECRET=this is the secret"');
+      } else if (format === 'powershell') {
+        expect(result.stdout).toContain(`$env:SECRET = 'this is the secret'`);
+      }
+    }
+  );
 });
