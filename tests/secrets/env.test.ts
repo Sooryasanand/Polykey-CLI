@@ -951,12 +951,18 @@ describe('commandEnv', () => {
       const jsonOut = JSON.parse(result.stdout);
 
       // Depending on the format, check that the variable is exported in the correct format
-      if (format === 'unix') {
-        expect(result.stdout).toContain("SECRET='this is the secret'");
-      } else if (format === 'cmd') {
-        expect(result.stdout).toContain('set "SECRET=this is the secret"');
-      } else if (format === 'powershell') {
-        expect(result.stdout).toContain(`$env:SECRET = 'this is the secret'`);
+      switch (format) {
+        case 'unix':
+          expect(result.stdout).toContain("export SECRET='this is the secret'");
+          break;
+        case 'cmd':
+          expect(result.stdout).toContain('set "SECRET=this is the secret"');
+          break;
+        case 'powershell':
+          expect(result.stdout).toContain(`$env:SECRET = 'this is the secret'`);
+          break;
+        default:
+          throw new Error(`Unsupported format: ${format}`);
       }
     }
   );

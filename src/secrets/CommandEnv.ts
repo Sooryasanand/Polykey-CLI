@@ -317,7 +317,12 @@ class CommandEnv extends CommandPolykey {
                 // Formatting as a .bat file for windows cmd
                 let data = '';
                 for (const [key, value] of Object.entries(envp)) {
-                  data += `\$env:${key} = '${value}'\n`;
+                  if (options.envExport) {
+                    data += `\$env:{key} = '${value}'\n`;
+                  } else {
+                    data += `\${key} = '${value}'\n`;
+                  }
+                  
                 }
                 process.stdout.write(
                   binUtils.outputFormatter({
