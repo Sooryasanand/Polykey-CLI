@@ -320,7 +320,7 @@ const parents = new commander.Option(
 
 const envExport = new commander.Option(
   '--export',
-  'Make the environment variable accessible to child processes',
+  'Make the environment variable accessible to child environments',
 ).default(false);
 
 const preserveNewline = new commander.Option(

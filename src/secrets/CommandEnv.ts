@@ -24,6 +24,7 @@ class CommandEnv extends CommandPolykey {
     this.addOption(binOptions.envFormat);
     this.addOption(binOptions.envInvalid);
     this.addOption(binOptions.envDuplicate);
+    this.addOption(binOptions.envExport);
     this.addOption(binOptions.preserveNewline);
     this.argument(
       '<args...>',
@@ -278,60 +279,55 @@ class CommandEnv extends CommandPolykey {
               }[platform] ?? 'unix';
           }
           switch (format) {
-            case 'unix':
-              {
-                // Formatting as a .env file
+            case 'unix': {
                 let data = '';
                 for (const [key, value] of Object.entries(envp)) {
+                  console.log(options.envExport)
                   if (options.envExport) {
-                    data += `export ${key}='${value}'\n`;
+                      data += `export ${key}='${value}'\n`;
                   } else {
-                    data += `${key}='${value}'\n`;
+                      data += `${key}='${value}'\n`;
                   }
                 }
                 process.stdout.write(
-                  binUtils.outputFormatter({
-                    type: 'raw',
-                    data,
-                  }),
+                    binUtils.outputFormatter({
+                        type: 'raw',
+                        data,
+                    }),
                 );
-              }
-              break;
-            case 'cmd':
-              {
-                // Formatting as a .bat file for windows cmd
+            }
+            break;          
+            case 'cmd': {
                 let data = '';
                 for (const [key, value] of Object.entries(envp)) {
-                  data += `set "${key}=${value}"\n`;
+                    data += `set "${key}=${value}"\n`;
                 }
                 process.stdout.write(
-                  binUtils.outputFormatter({
-                    type: 'raw',
-                    data,
-                  }),
+                    binUtils.outputFormatter({
+                        type: 'raw',
+                        data,
+                    }),
                 );
-              }
-              break;
-            case 'powershell':
-              {
-                // Formatting as a .bat file for windows cmd
+            }
+            break;          
+            case 'powershell': {
                 let data = '';
                 for (const [key, value] of Object.entries(envp)) {
+                  console.log(options.envExport)
                   if (options.envExport) {
-                    data += `\$env:{key} = '${value}'\n`;
+                      data += `$env:${key} = '${value}'\n`;
                   } else {
-                    data += `\${key} = '${value}'\n`;
+                      data += `${key} = '${value}'\n`;
                   }
-                  
                 }
                 process.stdout.write(
-                  binUtils.outputFormatter({
-                    type: 'raw',
-                    data,
-                  }),
+                    binUtils.outputFormatter({
+                        type: 'raw',
+                        data,
+                    }),
                 );
-              }
-              break;
+            }
+            break;                     
             case 'json':
               {
                 const data = {};

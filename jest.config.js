@@ -11,16 +11,20 @@ const moduleNameMapper = pathsToModuleNameMapper(compilerOptions.paths, {
 
 // Global variables that are shared across the jest worker pool
 // These variables must be static and serializable
-if ((process.env.PK_TEST_PLATFORM != null) !== (process.env.PK_TEST_COMMAND != null)) throw Error('Both PK_TEST_PLATFORM and PK_TEST_COMMAND must be set together.')
+if (
+  (process.env.PK_TEST_PLATFORM != null) !==
+  (process.env.PK_TEST_COMMAND != null)
+)
+  throw Error(
+    'Both PK_TEST_PLATFORM and PK_TEST_COMMAND must be set together.',
+  );
 const globals = {
   // Absolute directory to the project root
   projectDir: __dirname,
   // Absolute directory to the test root
   testDir: path.join(__dirname, 'tests'),
   // Default global data directory
-  dataDir: fs.mkdtempSync(
-    path.join(os.tmpdir(), 'polykey-test-global-'),
-  ),
+  dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'polykey-test-global-')),
   // Default asynchronous test timeout
   defaultTimeout: 20000,
   failedConnectionTimeout: 50000,
@@ -43,32 +47,35 @@ module.exports = {
   roots: ['<rootDir>/tests'],
   testMatch: ['**/?(*.)+(spec|test|unit.test).+(ts|tsx|js|jsx)'],
   transform: {
-    "^.+\\.(t|j)sx?$": [
-      "@swc/jest",
+    '^.+\\.(t|j)sx?$': [
+      '@swc/jest',
       {
-        "jsc": {
-          "parser": {
-            "syntax": "typescript",
-            "dynamicImport": true,
-            "tsx": true,
-            "decorators": compilerOptions.experimentalDecorators,
+        jsc: {
+          parser: {
+            syntax: 'typescript',
+            dynamicImport: true,
+            tsx: true,
+            decorators: compilerOptions.experimentalDecorators,
           },
-          "target": compilerOptions.target.toLowerCase(),
-          "keepClassNames": true,
+          target: compilerOptions.target.toLowerCase(),
+          keepClassNames: true,
         },
-      }
+      },
     ],
   },
   reporters: [
     'default',
-    ['jest-junit', {
-      outputDirectory: '<rootDir>/tmp/junit',
-      classNameTemplate: '{classname}',
-      ancestorSeparator: ' > ',
-      titleTemplate: '{title}',
-      addFileAttribute: 'true',
-      reportTestSuiteErrors: 'true',
-    }],
+    [
+      'jest-junit',
+      {
+        outputDirectory: '<rootDir>/tmp/junit',
+        classNameTemplate: '{classname}',
+        ancestorSeparator: ' > ',
+        titleTemplate: '{title}',
+        addFileAttribute: 'true',
+        reportTestSuiteErrors: 'true',
+      },
+    ],
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}', '!src/**/*.d.ts'],
   coverageReporters: ['text', 'cobertura'],
@@ -83,9 +90,6 @@ module.exports = {
   // Setup files after env are executed before each test file
   // after the jest test environment is installed
   // Can access globals
-  setupFilesAfterEnv: [
-    'jest-extended/all',
-    '<rootDir>/tests/setupAfterEnv.ts'
-  ],
+  setupFilesAfterEnv: ['jest-extended/all', '<rootDir>/tests/setupAfterEnv.ts'],
   moduleNameMapper: moduleNameMapper,
 };
